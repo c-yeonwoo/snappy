@@ -1,8 +1,12 @@
 // 순수 포맷 유틸. (구 mock-feed.ts에서 분리 — 실DB 연결 후 mock 데이터는 제거)
 
-export function formatWon(won: number) {
-  return `${won.toLocaleString("ko-KR")}원`;
+/** 포인트 표시. 1원 = 1P */
+export function formatPoint(p: number) {
+  return `${p.toLocaleString("ko-KR")}P`;
 }
+
+/** @deprecated formatPoint 사용 */
+export const formatWon = formatPoint;
 
 export function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

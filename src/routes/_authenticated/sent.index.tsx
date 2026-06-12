@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMySent, cancelPhotos } from "@/lib/photos.functions";
-import { formatWon } from "@/lib/format";
+import { formatPoint } from "@/lib/format";
 import { useState } from "react";
 import { Coins, Images } from "lucide-react";
 import { toast } from "sonner";
@@ -21,8 +21,9 @@ function SentPage() {
 
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   const photos = data?.photos ?? [];
-  const earningsWon = data?.earnings_won ?? 0;
   const sold = photos.filter((p) => p.status === "sold");
+  const sentTotal = photos.length;
+  const soldTotal = sold.length;
 
   function group(items: typeof photos) {
     const m = new Map<string, typeof photos>();
@@ -52,15 +53,22 @@ function SentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
-        <div className="min-w-0">
-          <span className="chip">보낸 사진</span>
-          <h1 className="font-display mt-2 text-3xl font-extrabold">내가 보낸 컷</h1>
-          <p className="mt-1 text-sm text-muted-foreground">묶음으로 보낸 컷과 소장 현황.</p>
+      <div>
+        <span className="chip">보낸 사진</span>
+        <h1 className="font-display mt-2 text-3xl font-extrabold">내가 보낸 컷</h1>
+      </div>
+      {/* 통계 */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-[1.25rem] bg-card border border-white/70 px-4 py-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">보낸 컷</p>
+          <p className="font-display mt-1 text-2xl font-extrabold">{sentTotal}<span className="text-sm font-semibold text-muted-foreground ml-0.5">장</span></p>
         </div>
-        <div className="shrink-0 rounded-[1.25rem] bg-gradient-to-br from-foreground to-[oklch(0.35_0.06_260)] px-5 py-3 text-background shadow-lg">
-          <p className="text-[10px] uppercase tracking-widest opacity-70">총 적립</p>
-          <p className="font-display text-2xl font-extrabold">{formatWon(earningsWon)}</p>
+        <div className="rounded-[1.25rem] bg-gradient-to-br from-foreground to-[oklch(0.35_0.06_260)] px-4 py-3 text-background shadow-lg">
+          <p className="text-[10px] uppercase tracking-wide opacity-70">소장됨</p>
+          <p className="font-display mt-1 text-2xl font-extrabold">
+            {soldTotal}<span className="text-sm font-semibold opacity-70 ml-0.5">건</span>
+            {sentTotal > 0 && <span className="ml-1.5 text-xs opacity-60">{Math.round(soldTotal / sentTotal * 100)}%</span>}
+          </p>
         </div>
       </div>
 
@@ -144,9 +152,9 @@ function SentPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold"><b>@{p.subject?.handle ?? "?"}</b> 님이 소장</p>
-                <p className="text-[11px] text-muted-foreground">가격 {formatWon(p.price_won)}</p>
+                <p className="text-[11px] text-muted-foreground">가격 {formatPoint(p.price_won)}</p>
               </div>
-              <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatWon(Math.round(p.price_won * 0.7))}</span>
+              <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
             </li>
           ))}
         </ul>

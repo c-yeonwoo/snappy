@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { getSentBatch, updateBatchPrice, cancelPhotos } from "@/lib/photos.functions";
-import { formatWon } from "@/lib/format";
+import { getSentBatch, updateBatchPrice, cancelPhotos, hideSentBatch } from "@/lib/photos.functions";
+import { formatPoint } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, X, Check } from "lucide-react";
+import { ArrowLeft, X, Check, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/sent/$id")({
   head: () => ({ meta: [{ title: "보낸 묶음 — Snappy" }] }),
@@ -20,12 +20,29 @@ function SentBatchPage() {
   const batchFn = useServerFn(getSentBatch);
   const priceFn = useServerFn(updateBatchPrice);
   const cancelFn = useServerFn(cancelPhotos);
+  const hideFn = useServerFn(hideSentBatch);
 
   const { data, isLoading, isError } = useQuery({ queryKey: ["sentBatch", id], queryFn: () => batchFn({ data: { batch_id: id } }) });
   const photos = data?.photos ?? [];
   const subject = data?.subject;
   const available = photos.filter((p) => p.status === "available");
   const soldCount = photos.filter((p) => p.status === "sold").length;
+  const allFinal = photos.length > 0 && available.length === 0; // 모두 최종 상태
+
+  async function hideHistory() {
+    if (!window.confirm("이 묶음을 내 보낸 목록에서 삭제할까요?")) return;
+    setBusy(true);
+    try {
+      await hideFn({ data: { batch_id: id } });
+      toast.success("기록을 삭제했어요");
+      qc.invalidateQueries({ queryKey: ["sent"] });
+      navigate({ to: "/sent" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "삭제 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
   const basePrice = available[0]?.price_won ?? photos[0]?.price_won ?? 3000;
 
   const [price, setPrice] = useState(0);
@@ -80,9 +97,16 @@ function SentBatchPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-5">
-      <button onClick={() => navigate({ to: "/sent" })} className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> 보낸 사진
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={() => navigate({ to: "/sent" })} className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground">
+          <ArrowLeft className="h-4 w-4" /> 보낸 사진
+        </button>
+        {allFinal && (
+          <button onClick={hideHistory} disabled={busy} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive">
+            <Trash2 className="h-3 w-3" /> 기록 삭제
+          </button>
+        )}
+      </div>
 
       <header>
         <h1 className="font-display text-2xl font-extrabold">@{subject?.handle ?? "?"} 에게 보낸 묶음</h1>
@@ -99,7 +123,7 @@ function SentBatchPage() {
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center rounded-full bg-secondary px-1">
                 <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
-                <span className="font-display w-24 text-center text-base font-extrabold">{formatWon(price)}</span>
+                <span className="font-display w-24 text-center text-base font-extrabold">{formatPoint(price)}</span>
                 <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
               </div>
               <Button type="button" disabled={!dirty || busy} className="rounded-full" onClick={savePrice}>
@@ -126,7 +150,7 @@ function SentBatchPage() {
                 {{ available: "대기중", sold: "소장됨", removed: "반려됨", reported: "신고됨" }[p.status] ?? "대기중"}
               </span>
             </div>
-            <p className="p-2.5 text-center text-xs font-semibold">{formatWon(p.price_won)}</p>
+            <p className="p-2.5 text-center text-xs font-semibold">{formatPoint(p.price_won)}</p>
           </div>
         ))}
       </div>

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { getBatch, purchasePhotos, removePhoto, reportPhoto } from "@/lib/photos.functions";
-import { formatWon, relativeTime } from "@/lib/format";
+import { formatPoint, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2 } from "lucide-react";
 
@@ -154,7 +154,7 @@ function BatchPage() {
                       </button>
                     ) : (
                       <button onClick={() => toggle(p.id)} className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold shadow transition ${picked ? "bg-primary text-primary-foreground" : "bg-white/95 text-foreground"}`}>
-                        {picked ? <><Check className="h-4 w-4" /> 담음</> : <><Plus className="h-4 w-4" /> 담기 · {formatWon(p.price_won)}</>}
+                        {picked ? <><Check className="h-4 w-4" /> 담음</> : <><Plus className="h-4 w-4" /> 담기 · {formatPoint(p.price_won)}</>}
                       </button>
                     )}
                   </div>
@@ -202,11 +202,11 @@ function BatchPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">합계</p>
-                  <p className="font-display text-2xl font-extrabold text-primary">{formatWon(total)}</p>
+                  <p className="font-display text-2xl font-extrabold text-primary">{formatPoint(total)}</p>
                 </div>
               </div>
               <Button className="h-12 w-full rounded-full text-base" onClick={buy} disabled={busy}>
-                {busy ? "받는 중…" : `${formatWon(total)}으로 소장하기`}
+                {busy ? "받는 중…" : `${formatPoint(total)}으로 소장하기`}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">소장하면 선택한 컷의 워터마크가 풀려요.</p>
             </>

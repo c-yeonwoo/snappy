@@ -3,10 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMyProfile, getMyFeed, getFriends } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { formatRemaining, isWindowOpen } from "@/lib/format";
+import { formatRemaining, isWindowOpen, formatPoint } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
-import { Settings, Users, ChevronRight, LogOut, BookmarkCheck, Copy } from "lucide-react";
+import { Settings, Users, ChevronRight, LogOut, BookmarkCheck, Copy, Coins, ArrowDownToLine, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "나 — Snappy" }] }),
@@ -23,6 +23,7 @@ function ProfilePage() {
   const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
   const friendCount = friendsData?.friends?.length ?? 0;
   const savedCount = (feedData?.photos ?? []).filter((p) => p.status === "sold").length;
+  const pointBalance = data?.point_balance ?? 0;
   const allowUntil = data?.profile?.allow_until ?? null;
   const windowActive = isWindowOpen(allowUntil);
   useNow(windowActive);
@@ -67,6 +68,34 @@ function ProfilePage() {
           <Stat label="보관" value={savedCount} />
           <Stat label="받기" value={windowActive ? "ON" : "친구만"} />
         </div>
+      </section>
+
+      {/* 포인트 섹션 */}
+      <section className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-card/90 backdrop-blur">
+        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-secondary"><Coins className="h-4 w-4" /></span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">내 포인트</p>
+              <p className="font-display text-lg font-extrabold leading-tight">{formatPoint(pointBalance)}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => toast.info("충전 기능을 준비 중이에요 🚀")}
+              className="inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition active:scale-95"
+            >
+              <Plus className="h-3 w-3" /> 충전
+            </button>
+            <button
+              onClick={() => toast.info("출금 기능을 준비 중이에요 🚀")}
+              className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition active:scale-95"
+            >
+              <ArrowDownToLine className="h-3 w-3" /> 출금
+            </button>
+          </div>
+        </div>
+        <p className="px-5 py-2.5 text-[11px] text-muted-foreground">1P = 1원 · 친구가 내 사진을 소장하면 포인트로 적립돼요</p>
       </section>
 
       {/* Menu */}

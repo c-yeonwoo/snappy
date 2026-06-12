@@ -1,4 +1,4 @@
-import { formatWon } from "@/lib/format";
+import { formatPoint } from "@/lib/format";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -257,10 +257,10 @@ function UploadPage() {
           <div className="mt-3 flex items-center gap-3">
             <div className="flex items-center rounded-full bg-secondary px-1">
               <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
-              <span className="font-display w-24 text-center text-base font-extrabold">{formatWon(price)}</span>
+              <span className="font-display w-24 text-center text-base font-extrabold">{formatPoint(price)}</span>
               <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
             </div>
-            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">{formatWon(Math.round(price * 0.7))}</b> 적립</p>
+            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">{formatPoint(Math.round(price * 0.7))}</b> 적립</p>
           </div>
         </div>
         <div>

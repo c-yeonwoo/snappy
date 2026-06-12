@@ -135,6 +135,7 @@ export const getMySent = createServerFn({ method: "GET" })
       .from("photos")
       .select("id, subject_id, original_path, price_won, status, created_at, batch_id")
       .eq("uploader_id", context.userId)
+      .neq("uploader_hidden" as any, true)
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw dbError(error);
@@ -485,7 +486,32 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .eq("id", context.userId)
       .single();
     if (error) throw dbError(error);
-    return { profile: data };
+
+    // 포인트 잔액 = 적립된 업로더 수익 합계 (출금 기능 연동 전 단순 집계)
+    const { data: earnRows } = await context.supabase
+      .from("purchases")
+      .select("uploader_earning_won")
+      .eq("uploader_id", context.userId)
+      .eq("status", "completed");
+    const point_balance = (earnRows ?? []).reduce((s, r) => s + (r.uploader_earning_won ?? 0), 0);
+
+    return { profile: data, point_balance };
+  });
+
+// 보낸 사진 이력 숨기기 — 더 이상 액션이 없는 묶음을 내 목록에서 삭제
+export const hideSentBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batch_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // batch_id가 일치하는 사진 또는 단건(photo_id) 소프트 삭제
+    const { error } = await supabaseAdmin
+      .from("photos")
+      .update({ uploader_hidden: true } as any)
+      .eq("uploader_id", context.userId)
+      .or(`batch_id.eq.${data.batch_id},id.eq.${data.batch_id}`);
+    if (error) throw dbError(error);
+    return { ok: true };
   });
 
 export const updateMyProfile = createServerFn({ method: "POST" })

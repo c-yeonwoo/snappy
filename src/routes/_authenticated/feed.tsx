@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { ImageOff, Inbox, Send, Search, BookmarkCheck, Lock, Images } from "lucide-react";
 import { getMyFeed } from "@/lib/photos.functions";
-import { formatWon, isNew } from "@/lib/format";
+import { formatPoint, isNew } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({ meta: [{ title: "받은함 — Snappy" }] }),
@@ -135,7 +135,7 @@ function FeedPage() {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-foreground">
-                      <Lock className="h-2.5 w-2.5" />{count > 1 ? `${count}장 · ${formatWon(cover.price_won)}~` : formatWon(cover.price_won)}
+                      <Lock className="h-2.5 w-2.5" />{count > 1 ? `${count}장 · ${formatPoint(cover.price_won)}~` : formatPoint(cover.price_won)}
                     </span>
                   )}
                 </div>
