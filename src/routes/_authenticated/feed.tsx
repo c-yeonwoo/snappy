@@ -91,7 +91,7 @@ function FeedPage() {
                     <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(-20deg,transparent_0_24px,rgba(255,255,255,0.16)_24px_26px)]" />
                   )}
                   {p.is_video && (
-                    <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-foreground/80 text-background">
+                    <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-foreground/80 text-background">
                       <Play className="h-3 w-3" />
                     </span>
                   )}
