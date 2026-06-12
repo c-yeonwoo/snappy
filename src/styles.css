@@ -155,8 +155,8 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     background-image:
-      radial-gradient(900px 600px at 0% -10%, oklch(0.93 0.06 225 / 0.7), transparent 60%),
-      radial-gradient(700px 500px at 100% 10%, oklch(0.95 0.05 215 / 0.55), transparent 60%);
+      radial-gradient(900px 600px at 0% -10%, oklch(0.92 0.18 128 / 0.35), transparent 60%),
+      radial-gradient(700px 500px at 100% 10%, oklch(0.96 0.05 128 / 0.5), transparent 60%);
     background-attachment: fixed;
   }
 
