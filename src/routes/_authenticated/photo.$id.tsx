@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
 import { toast } from "sonner";
-import { Download, Flag, Trash2, Play } from "lucide-react";
+import { Download, Flag, Trash2, Play, ShieldAlert } from "lucide-react";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
   head: () => ({ meta: [{ title: "사진 — Snappy" }] }),
@@ -26,6 +27,20 @@ function PhotoDetailPage() {
   const [reason, setReason] = useState("");
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Best-effort screenshot deterrent: blur preview while the tab is in the
+  // background. Real screenshot blocking is impossible on the web — when the
+  // app runs as a native shell we will call FLAG_SECURE / equivalent.
+  useEffect(() => {
+    const onVis = () => {
+      document.body.classList.toggle("is-hidden", document.hidden);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      document.body.classList.remove("is-hidden");
+    };
+  }, []);
 
   if (isLoading || !data) return <p className="text-muted-foreground">불러오는 중…</p>;
   const p = data.photo;
@@ -74,13 +89,17 @@ function PhotoDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-card shadow-[0_25px_60px_-30px_rgba(125,160,200,0.5)]">
-        <div className="relative bg-secondary">
+        <div
+          className="no-capture no-capture-hide relative bg-secondary"
+          onContextMenu={(e) => e.preventDefault()}
+        >
           {p.preview_url && (
             isVideo
-              ? <video src={p.preview_url} controls className="mx-auto max-h-[70vh] w-full object-contain" />
-              : <img src={p.preview_url} alt="" className="mx-auto max-h-[70vh] w-full object-contain" />
+              ? <video src={p.preview_url} controls controlsList="nodownload" disablePictureInPicture className="mx-auto max-h-[70vh] w-full object-contain" />
+              : <img src={p.preview_url} alt="" draggable={false} className="mx-auto max-h-[70vh] w-full object-contain" />
           )}
           {isVideo && <span className="absolute left-3 top-3 chip !bg-white/90"><Play className="h-3 w-3" />영상</span>}
+          <span className="absolute right-3 top-3 chip !bg-foreground/85 !text-background !border-transparent"><ShieldAlert className="h-3 w-3" />캡처 금지</span>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
