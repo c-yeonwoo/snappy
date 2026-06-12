@@ -36,7 +36,7 @@ function SentPage() {
           <Link to="/upload" className="mt-3 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">📮 보내러 가기</Link>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((p) => {
             const statusMap = {
               sold: { label: "판매 ✓", cls: "!bg-primary !text-primary-foreground !border-primary/40" },

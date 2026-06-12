@@ -40,7 +40,7 @@ function FeedPage() {
           <p className="mt-1 text-sm text-muted-foreground">친구가 보내면 여기에 톡 도착해요 📬</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((p) => {
             const video = isVideo(p.preview_url);
             return (

@@ -40,7 +40,7 @@ function Index() {
           <span className="chip">
             <Sparkles className="h-3.5 w-3.5" /> 친구가 찍어주는 스냅 마켓
           </span>
-          <h1 className="font-display mt-5 max-w-3xl text-[2.6rem] font-extrabold leading-[1.05] sm:text-6xl">
+          <h1 className="font-display mt-5 max-w-3xl text-4xl font-extrabold leading-[1.05] sm:text-6xl">
             너가 찍어준 내 사진,<br />
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">맘에 드는 컷만</span> 가질래.
           </h1>
@@ -54,7 +54,7 @@ function Index() {
           </div>
 
           {/* hero card mock */}
-          <div className="mt-12 grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-3">
+          <div className="mt-10 grid grid-cols-3 gap-2.5 sm:max-w-2xl sm:gap-3">
             {[
               { tag: "@yuna", emo: "🌊", grad: "from-sky-200 to-sky-100" },
               { tag: "@minho", emo: "🎞️", grad: "from-pink-200 to-rose-100", video: true },
