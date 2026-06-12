@@ -95,7 +95,7 @@ function AuthPage() {
                   <Label htmlFor="password2">비밀번호</Label>
                   <Input id="password2" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
-                <Button type="submit" className="w-full rounded-full" disabled={loading}>가입하기 🍑</Button>
+                <Button type="submit" className="w-full rounded-full" disabled={loading}>가입하기 ✨</Button>
               </form>
             </TabsContent>
           </Tabs>
