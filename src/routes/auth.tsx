@@ -47,18 +47,24 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="mx-auto w-full max-w-6xl px-6 py-5">
-        <Link to="/" className="flex items-center gap-2 font-semibold">
-          <Camera className="h-5 w-5 text-primary" /> SnapBuddy
+    <div className="relative flex min-h-screen flex-col overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-peach blur-3xl opacity-60" />
+      <div aria-hidden className="pointer-events-none absolute bottom-0 -left-20 h-80 w-80 rounded-full bg-accent/50 blur-3xl opacity-60" />
+      <header className="relative mx-auto w-full max-w-6xl px-5 py-5">
+        <Link to="/" className="flex items-center gap-2 font-display font-bold">
+          <span className="grid h-8 w-8 place-items-center rounded-2xl bg-foreground text-background">
+            <Camera className="h-4 w-4" />
+          </span>
+          SnapBuddy
         </Link>
       </header>
-      <main className="flex flex-1 items-center justify-center px-6 pb-16">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
-          <h1 className="text-2xl font-bold">시작하기</h1>
-          <p className="mt-1 text-sm text-muted-foreground">이메일로 가입하고 사진을 주고받으세요.</p>
+      <main className="relative flex flex-1 items-center justify-center px-5 pb-16">
+        <div className="w-full max-w-md rounded-[1.75rem] border border-white/60 bg-card/90 p-7 shadow-[0_30px_80px_-30px_rgba(125,160,200,0.45)] backdrop-blur">
+          <span className="chip">👋 어서와요</span>
+          <h1 className="font-display mt-3 text-3xl font-extrabold">시작해볼까요?</h1>
+          <p className="mt-1 text-sm text-muted-foreground">이메일로 가입하고 사진·영상을 주고받아요.</p>
           <Tabs defaultValue="signin" className="mt-6">
-            <TabsList className="grid grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
               <TabsTrigger value="signin">로그인</TabsTrigger>
               <TabsTrigger value="signup">가입</TabsTrigger>
             </TabsList>
@@ -89,7 +95,7 @@ function AuthPage() {
                   <Label htmlFor="password2">비밀번호</Label>
                   <Input id="password2" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>가입하기</Button>
+                <Button type="submit" className="w-full rounded-full" disabled={loading}>가입하기 🍑</Button>
               </form>
             </TabsContent>
           </Tabs>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
 import { toast } from "sonner";
-import { Download, Flag, Trash2 } from "lucide-react";
+import { Download, Flag, Trash2, Play } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
   head: () => ({ meta: [{ title: "사진 — SnapBuddy" }] }),
@@ -69,32 +69,38 @@ function PhotoDetailPage() {
   }
 
   const finalOriginalUrl = originalUrl ?? p.original_url;
+  const isVideo = !!p.preview_url && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(p.preview_url);
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="bg-muted">
-          {p.preview_url && <img src={p.preview_url} alt="" className="mx-auto max-h-[70vh] w-full object-contain" />}
+      <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-card shadow-[0_25px_60px_-30px_rgba(125,160,200,0.5)]">
+        <div className="relative bg-secondary">
+          {p.preview_url && (
+            isVideo
+              ? <video src={p.preview_url} controls className="mx-auto max-h-[70vh] w-full object-contain" />
+              : <img src={p.preview_url} alt="" className="mx-auto max-h-[70vh] w-full object-contain" />
+          )}
+          {isVideo && <span className="absolute left-3 top-3 chip !bg-white/90"><Play className="h-3 w-3" />영상</span>}
         </div>
         <div className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">촬영</p>
-              <p className="font-semibold">@{p.uploader?.handle} · {p.uploader?.display_name}</p>
-              {p.note && <p className="mt-2 text-sm">{p.note}</p>}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">촬영</p>
+              <p className="font-display truncate text-lg font-extrabold">@{p.uploader?.handle}</p>
+              {p.note && <p className="mt-2 rounded-2xl bg-sky/70 px-3 py-2 text-sm">💬 {p.note}</p>}
             </div>
-            <p className="text-2xl font-bold text-primary">${(p.price_cents / 100).toFixed(2)}</p>
+            <p className="font-display text-3xl font-extrabold text-primary">${(p.price_cents / 100).toFixed(2)}</p>
           </div>
 
           {p.status === "available" && isSubject ? (
             <div className="mt-6 flex gap-2">
-              <Button className="flex-1" onClick={handleBuy} disabled={busy}>
-                {busy ? "처리 중…" : "구매하고 원본 받기"}
+              <Button className="h-12 flex-1 rounded-full text-base" onClick={handleBuy} disabled={busy}>
+                {busy ? "처리 중…" : "✨ 결제하고 원본 받기"}
               </Button>
-              <Button variant="outline" size="icon" onClick={handleRemove} title="삭제"><Trash2 className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" onClick={handleRemove} title="삭제"><Trash2 className="h-4 w-4" /></Button>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="icon" title="신고"><Flag className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" title="신고"><Flag className="h-4 w-4" /></Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>이 사진 신고하기</DialogTitle></DialogHeader>
@@ -107,8 +113,8 @@ function PhotoDetailPage() {
           ) : p.status === "sold" && isSubject ? (
             <div className="mt-6">
               {finalOriginalUrl ? (
-                <a href={finalOriginalUrl} download className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground">
-                  <Download className="h-4 w-4" /> 원본 다운로드
+                <a href={finalOriginalUrl} download className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground shadow-md hover:bg-primary/90">
+                  <Download className="h-4 w-4" /> 원본 바로 다운로드
                 </a>
               ) : (
                 <p className="text-sm text-muted-foreground">구매 완료된 사진이에요.</p>
