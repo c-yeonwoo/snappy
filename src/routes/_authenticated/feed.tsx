@@ -2,10 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMyFeed } from "@/lib/photos.functions";
-import { ImageOff, Play, Sparkles } from "lucide-react";
+import { ImageOff, Play, Sparkles, Send, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/feed")({
-  head: () => ({ meta: [{ title: "내 피드 — SnapBuddy" }] }),
+  head: () => ({ meta: [{ title: "내 피드 — Snappy" }] }),
   component: FeedPage,
 });
 
@@ -31,9 +31,22 @@ function FeedPage() {
         <p className="text-xs text-muted-foreground">{photos.length}개</p>
       </header>
 
+      {/* Quick send shortcut */}
+      <Link
+        to="/upload"
+        className="mb-4 flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 p-3 shadow-[0_12px_30px_-18px_rgba(56,189,248,0.5)] backdrop-blur"
+      >
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground"><Send className="h-4 w-4" /></span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-sm font-bold">빠르게 보내기</p>
+          <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Search className="h-3 w-3" />@핸들로 받는 사람 찾기</p>
+        </div>
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold">→</span>
+      </Link>
+
       {photos.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-peach-soft">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-soft">
             <ImageOff className="h-6 w-6 text-foreground" />
           </div>
           <h2 className="font-display mt-4 text-lg font-bold">아직 받은 컷이 없어요</h2>

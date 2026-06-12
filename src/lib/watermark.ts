@@ -1,7 +1,7 @@
 // Client-side watermarking using Canvas.
-// Draws a tiled diagonal "SnapBuddy" text plus a corner badge on top of the image.
+// Draws a tiled diagonal "Snappy" text plus a corner badge on top of the image.
 // Returns a JPEG Blob suitable for upload.
-export async function watermarkImage(file: File, label = "SnapBuddy"): Promise<Blob> {
+export async function watermarkImage(file: File, label = "Snappy"): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const maxDim = 1600;
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));

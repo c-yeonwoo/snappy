@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * SnapBuddy — Sky & Peach
- * Palette: #e0f2fe / #7dd3fc / #fecaca / #f9a8a8
+ * Snappy — All Sky
+ * Palette: #f0f9ff / #e0f2fe / #7dd3fc / #38bdf8 / #0284c7
  * Fonts: Outfit (display) + Figtree (body)
  */
 
@@ -22,8 +22,7 @@
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --color-sky: var(--sky);
   --color-sky-soft: var(--sky-soft);
-  --color-peach: var(--peach);
-  --color-peach-soft: var(--peach-soft);
+  --color-sky-deep: var(--sky-deep);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -62,33 +61,31 @@
 :root {
   --radius: 1.1rem;
   /* base */
-  --background: oklch(0.985 0.012 230);
-  --foreground: oklch(0.22 0.04 260);
+  --background: oklch(0.985 0.014 230);
+  --foreground: oklch(0.24 0.05 245);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.04 260);
+  --card-foreground: oklch(0.24 0.05 245);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.04 260);
-  /* peach as primary action — warm pop on sky background */
-  --primary: oklch(0.78 0.13 25);          /* #f9a8a8-ish */
-  --primary-foreground: oklch(0.22 0.04 25);
-  --primary-glow: oklch(0.86 0.09 30);     /* #fecaca-ish */
-  /* sky as secondary */
+  --popover-foreground: oklch(0.24 0.05 245);
+  /* sky as primary action — cool, fresh */
+  --primary: oklch(0.7 0.14 230);          /* #38bdf8-ish */
+  --primary-foreground: oklch(0.99 0.01 230);
+  --primary-glow: oklch(0.85 0.09 225);    /* #7dd3fc */
   --secondary: oklch(0.96 0.03 230);       /* #e0f2fe */
-  --secondary-foreground: oklch(0.28 0.06 240);
-  --muted: oklch(0.965 0.018 230);
-  --muted-foreground: oklch(0.5 0.03 250);
+  --secondary-foreground: oklch(0.3 0.08 235);
+  --muted: oklch(0.965 0.02 230);
+  --muted-foreground: oklch(0.52 0.04 240);
   --accent: oklch(0.88 0.08 220);          /* #7dd3fc */
-  --accent-foreground: oklch(0.22 0.06 240);
+  --accent-foreground: oklch(0.24 0.07 235);
   --destructive: oklch(0.62 0.21 22);
   --destructive-foreground: oklch(0.99 0.01 80);
-  --border: oklch(0.93 0.02 230);
-  --input: oklch(0.94 0.02 230);
-  --ring: oklch(0.82 0.12 25);
+  --border: oklch(0.93 0.025 230);
+  --input: oklch(0.94 0.022 230);
+  --ring: oklch(0.78 0.12 225);
   /* named tokens */
-  --sky: oklch(0.96 0.03 230);
-  --sky-soft: oklch(0.985 0.018 230);
-  --peach: oklch(0.86 0.09 30);
-  --peach-soft: oklch(0.95 0.04 35);
+  --sky: oklch(0.94 0.04 225);
+  --sky-soft: oklch(0.985 0.02 230);
+  --sky-deep: oklch(0.62 0.14 235);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -149,8 +146,8 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     background-image:
-      radial-gradient(900px 600px at 0% -10%, oklch(0.96 0.05 220 / 0.7), transparent 60%),
-      radial-gradient(700px 500px at 100% 10%, oklch(0.93 0.07 30 / 0.55), transparent 60%);
+      radial-gradient(900px 600px at 0% -10%, oklch(0.93 0.06 225 / 0.7), transparent 60%),
+      radial-gradient(700px 500px at 100% 10%, oklch(0.95 0.05 215 / 0.55), transparent 60%);
     background-attachment: fixed;
   }
 

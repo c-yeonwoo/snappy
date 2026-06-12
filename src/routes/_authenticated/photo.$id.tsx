@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Download, Flag, Trash2, Play } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
-  head: () => ({ meta: [{ title: "사진 — SnapBuddy" }] }),
+  head: () => ({ meta: [{ title: "사진 — Snappy" }] }),
   component: PhotoDetailPage,
 });
 
