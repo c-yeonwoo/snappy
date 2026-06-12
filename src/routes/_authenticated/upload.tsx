@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { Search, Upload, X, Film, Image as ImageIcon, Play } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/upload")({
-  head: () => ({ meta: [{ title: "사진 보내기 — SnapBuddy" }] }),
+  head: () => ({ meta: [{ title: "사진 보내기 — Snappy" }] }),
   component: UploadPage,
 });
 
@@ -98,7 +98,7 @@ function UploadPage() {
         {selected ? (
           <div className="mt-3 flex items-center justify-between rounded-2xl bg-secondary p-3">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-peach-soft font-display font-bold">{selected.display_name?.[0] ?? "?"}</div>
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-sky-soft font-display font-bold">{selected.display_name?.[0] ?? "?"}</div>
               <div>
                 <p className="font-semibold">{selected.display_name}</p>
               <p className="text-xs text-muted-foreground">@{selected.handle}</p>

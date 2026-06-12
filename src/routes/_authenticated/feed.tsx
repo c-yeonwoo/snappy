@@ -5,7 +5,7 @@ import { getMyFeed } from "@/lib/photos.functions";
 import { ImageOff, Play, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/feed")({
-  head: () => ({ meta: [{ title: "내 피드 — SnapBuddy" }] }),
+  head: () => ({ meta: [{ title: "내 피드 — Snappy" }] }),
   component: FeedPage,
 });
 
@@ -33,7 +33,7 @@ function FeedPage() {
 
       {photos.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-peach-soft">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-soft">
             <ImageOff className="h-6 w-6 text-foreground" />
           </div>
           <h2 className="font-display mt-4 text-lg font-bold">아직 받은 컷이 없어요</h2>

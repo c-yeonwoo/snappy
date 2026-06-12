@@ -35,7 +35,7 @@ function AuthedLayout() {
             <span className="grid h-8 w-8 place-items-center rounded-2xl bg-foreground text-background">
               <Camera className="h-4 w-4" />
             </span>
-            SnapBuddy
+            Snappy
           </Link>
           <nav className="hidden items-center gap-1 sm:flex">
             {tabs.map((t) => (

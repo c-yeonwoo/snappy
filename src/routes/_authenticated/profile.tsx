@@ -9,7 +9,7 @@ import { getMyProfile, updateMyProfile } from "@/lib/photos.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [{ title: "프로필 — SnapBuddy" }] }),
+  head: () => ({ meta: [{ title: "프로필 — Snappy" }] }),
   component: ProfilePage,
 });
 

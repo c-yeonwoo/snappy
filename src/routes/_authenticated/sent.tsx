@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getMySent } from "@/lib/photos.functions";
 
 export const Route = createFileRoute("/_authenticated/sent")({
-  head: () => ({ meta: [{ title: "보낸 사진 — SnapBuddy" }] }),
+  head: () => ({ meta: [{ title: "보낸 사진 — Snappy" }] }),
   component: SentPage,
 });
 

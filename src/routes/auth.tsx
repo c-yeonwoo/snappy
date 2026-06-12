@@ -9,7 +9,7 @@ import { Camera } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "로그인 — SnapBuddy" }, { name: "description", content: "SnapBuddy에 로그인하거나 새 계정을 만드세요." }] }),
+  head: () => ({ meta: [{ title: "로그인 — Snappy" }, { name: "description", content: "Snappy에 로그인하거나 새 계정을 만드세요." }] }),
   component: AuthPage,
 });
 
@@ -48,14 +48,14 @@ function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-peach blur-3xl opacity-60" />
+      <div aria-hidden className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-sky blur-3xl opacity-60" />
       <div aria-hidden className="pointer-events-none absolute bottom-0 -left-20 h-80 w-80 rounded-full bg-accent/50 blur-3xl opacity-60" />
       <header className="relative mx-auto w-full max-w-6xl px-5 py-5">
         <Link to="/" className="flex items-center gap-2 font-display font-bold">
           <span className="grid h-8 w-8 place-items-center rounded-2xl bg-foreground text-background">
             <Camera className="h-4 w-4" />
           </span>
-          SnapBuddy
+          Snappy
         </Link>
       </header>
       <main className="relative flex flex-1 items-center justify-center px-5 pb-16">
