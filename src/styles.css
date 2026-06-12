@@ -214,7 +214,7 @@
   pointer-events: none;
 }
 
-body:not(:focus-within) .no-capture-hide,
+/* 탭이 백그라운드일 때만 블러(스크린샷 억지). 보는 중엔 선명하게. */
 body.is-hidden .no-capture-hide {
   filter: blur(28px);
 }

@@ -13,6 +13,19 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+// Supabase 인증 에러(영어/코드)를 한글로 변환
+function authErrorKo(error: { code?: string; message?: string } | null, fallback: string): string {
+  const code = error?.code ?? "";
+  const msg = (error?.message ?? "").toLowerCase();
+  if (code === "invalid_credentials" || msg.includes("invalid login")) return "이메일 또는 비밀번호가 올바르지 않아요";
+  if (code === "email_not_confirmed" || msg.includes("not confirmed")) return "이메일 인증이 필요해요. 메일함을 확인해 주세요";
+  if (code === "user_already_exists" || msg.includes("already registered") || msg.includes("already been registered")) return "이미 가입된 이메일이에요";
+  if (code === "weak_password" || msg.includes("password should be")) return "비밀번호가 너무 짧아요 (8자 이상)";
+  if (code === "over_request_rate_limit" || msg.includes("rate limit")) return "요청이 많아요. 잠시 후 다시 시도해 주세요";
+  if (code === "validation_failed" || msg.includes("unable to validate email") || msg.includes("invalid email")) return "이메일 형식을 확인해 주세요";
+  return fallback;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -25,7 +38,7 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(authErrorKo(error, "로그인에 실패했어요. 잠시 후 다시 시도해 주세요"));
     navigate({ to: "/feed" });
   }
 
@@ -41,7 +54,7 @@ function AuthPage() {
       },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(authErrorKo(error, "가입에 실패했어요. 잠시 후 다시 시도해 주세요"));
     toast.success("계정이 생성되었어요!");
     navigate({ to: "/feed" });
   }

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       photos: {
         Row: {
+          batch_id: string | null
           created_at: string
           id: string
           note: string | null
@@ -27,6 +28,7 @@ export type Database = {
           watermarked_path: string
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           id?: string
           note?: string | null
@@ -38,6 +40,7 @@ export type Database = {
           watermarked_path: string
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           id?: string
           note?: string | null

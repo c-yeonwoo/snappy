@@ -4,6 +4,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const EARNING_RATE = 0.7;
 
+// DB/스토리지 오류는 사용자에겐 한글 일반 메시지로 노출하고, 원본은 서버 로그로 남긴다.
+function dbError(e: { message?: string } | null | undefined) {
+  console.error("[supabase]", e?.message);
+  return new Error("요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
+}
+
 export const searchProfiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ q: z.string().min(1).max(64) }).parse(input))
@@ -15,7 +21,7 @@ export const searchProfiles = createServerFn({ method: "POST" })
       .or(`handle.ilike.%${q}%,display_name.ilike.%${q}%`)
       .neq("id", context.userId)
       .limit(10);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { results: rows ?? [] };
   });
 
@@ -29,12 +35,13 @@ export const createPhoto = createServerFn({ method: "POST" })
         watermarked_path: z.string().min(3).max(500),
         price_won: z.number().int().min(1000).max(1000000),
         note: z.string().max(280).optional(),
+        batch_id: z.string().uuid().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     if (data.subject_id === context.userId) {
-      throw new Error("Cannot send a photo to yourself");
+      throw new Error("자기 자신에게는 보낼 수 없어요");
     }
 
     // 전송 권한 검증: 받는 사람과 양방향 친구이거나, 받는 사람이 받기 설정을 열어둔 경우만.
@@ -65,10 +72,11 @@ export const createPhoto = createServerFn({ method: "POST" })
         watermarked_path: data.watermarked_path,
         price_won: data.price_won,
         note: data.note ?? null,
+        batch_id: data.batch_id ?? null,
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { id: row.id };
   });
 
@@ -77,12 +85,12 @@ export const getMyFeed = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: photos, error } = await context.supabase
       .from("photos")
-      .select("id, uploader_id, watermarked_path, price_won, status, note, created_at")
+      .select("id, uploader_id, watermarked_path, original_path, price_won, status, note, created_at, batch_id")
       .eq("subject_id", context.userId)
       .neq("status", "removed")
       .order("created_at", { ascending: false })
       .limit(100);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     const uploaderIds = Array.from(new Set((photos ?? []).map((p) => p.uploader_id)));
     const profilesMap: Record<string, { handle: string; display_name: string; avatar_url: string | null }> = {};
@@ -94,17 +102,29 @@ export const getMyFeed = createServerFn({ method: "GET" })
       for (const p of profs ?? []) profilesMap[p.id] = { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url };
     }
 
-    // signed urls for previews — 한 번의 batch 호출로 생성 (N+1 round-trip 방지)
+    // signed urls — batch 호출 (N+1 방지)
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const list = photos ?? [];
-    const signed = list.length
+    // 워터마크 미리보기 (전체)
+    const wm = list.length
       ? (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? []
       : [];
-    const enriched = list.map((p, i) => ({
-      ...p,
-      preview_url: signed[i]?.signedUrl ?? null,
-      uploader: profilesMap[p.uploader_id] ?? null,
-    }));
+    // 원본 (이미 구매=sold 인 것만 — 내가 원본을 소유하므로 앨범에서 워터마크 없이 표시)
+    const soldIdx = list.map((p, i) => (p.status === "sold" ? i : -1)).filter((i) => i >= 0);
+    const og = soldIdx.length
+      ? (await supabaseAdmin.storage.from("photos-original").createSignedUrls(soldIdx.map((i) => list[i].original_path), 60 * 60)).data ?? []
+      : [];
+    const ogByIdx: Record<number, string | null> = {};
+    soldIdx.forEach((idx, k) => { ogByIdx[idx] = og[k]?.signedUrl ?? null; });
+    const enriched = list.map((p, i) => {
+      const { original_path, ...rest } = p; // 원본 경로는 클라에 노출하지 않음
+      return {
+        ...rest,
+        preview_url: wm[i]?.signedUrl ?? null,
+        original_url: ogByIdx[i] ?? null, // sold 가 아니면 null
+        uploader: profilesMap[p.uploader_id] ?? null,
+      };
+    });
     return { photos: enriched };
   });
 
@@ -113,11 +133,11 @@ export const getMySent = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: photos, error } = await context.supabase
       .from("photos")
-      .select("id, subject_id, watermarked_path, price_won, status, created_at")
+      .select("id, subject_id, watermarked_path, price_won, status, created_at, batch_id")
       .eq("uploader_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     const subjectIds = Array.from(new Set((photos ?? []).map((p) => p.subject_id)));
     const profilesMap: Record<string, { handle: string; display_name: string }> = {};
@@ -160,7 +180,7 @@ export const getPhotoDetail = createServerFn({ method: "POST" })
       .select("id, uploader_id, subject_id, watermarked_path, price_won, status, note, created_at")
       .eq("id", data.id)
       .single();
-    if (error || !photo) throw new Error("Photo not found");
+    if (error || !photo) throw new Error("사진을 찾을 수 없어요");
 
     const { data: uploader } = await context.supabase
       .from("profiles")
@@ -219,9 +239,9 @@ export const purchasePhoto = createServerFn({ method: "POST" })
       .select("id, uploader_id, subject_id, price_won, status, original_path")
       .eq("id", data.id)
       .single();
-    if (error || !photo) throw new Error("Photo not found");
-    if (photo.subject_id !== context.userId) throw new Error("Only the photo subject can purchase");
-    if (photo.status !== "available") throw new Error("Photo is not available");
+    if (error || !photo) throw new Error("사진을 찾을 수 없어요");
+    if (photo.subject_id !== context.userId) throw new Error("받는 사람만 소장할 수 있어요");
+    if (photo.status !== "available") throw new Error("이미 소장되었거나 받을 수 없는 사진이에요");
 
     const earning = Math.floor(photo.price_won * EARNING_RATE);
 
@@ -234,7 +254,7 @@ export const purchasePhoto = createServerFn({ method: "POST" })
       uploader_earning_won: earning,
       status: "completed",
     });
-    if (insErr) throw new Error(insErr.message);
+    if (insErr) throw dbError(insErr);
 
     await supabaseAdmin.from("photos").update({ status: "sold" }).eq("id", photo.id);
 
@@ -243,6 +263,139 @@ export const purchasePhoto = createServerFn({ method: "POST" })
       .createSignedUrl(photo.original_path, 60 * 10);
 
     return { original_url: signed?.signedUrl ?? null };
+  });
+
+// 묶음 상세 — 받는 사람이 한 묶음(batch)의 사진들을 슬라이더로 보며 고른다.
+export const getBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batch_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: photos, error } = await context.supabase
+      .from("photos")
+      .select("id, uploader_id, subject_id, watermarked_path, original_path, price_won, status, note, created_at")
+      .eq("batch_id", data.batch_id)
+      .eq("subject_id", context.userId)
+      .neq("status", "removed")
+      .order("created_at", { ascending: true });
+    if (error) throw dbError(error);
+    const list = photos ?? [];
+    if (list.length === 0) throw new Error("묶음을 찾을 수 없어요");
+
+    const { data: uploader } = await context.supabase
+      .from("profiles")
+      .select("handle, display_name, avatar_url")
+      .eq("id", list[0].uploader_id)
+      .single();
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const wm = (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? [];
+    const soldIdx = list.map((p, i) => (p.status === "sold" ? i : -1)).filter((i) => i >= 0);
+    const og = soldIdx.length
+      ? (await supabaseAdmin.storage.from("photos-original").createSignedUrls(soldIdx.map((i) => list[i].original_path), 60 * 60)).data ?? []
+      : [];
+    const ogByIdx: Record<number, string | null> = {};
+    soldIdx.forEach((idx, k) => { ogByIdx[idx] = og[k]?.signedUrl ?? null; });
+
+    const items = list.map((p, i) => ({
+      id: p.id,
+      status: p.status,
+      price_won: p.price_won,
+      note: p.note,
+      created_at: p.created_at,
+      is_owned: p.status === "sold",
+      preview_url: wm[i]?.signedUrl ?? null,
+      original_url: ogByIdx[i] ?? null,
+    }));
+    return { uploader, photos: items };
+  });
+
+// 보낸 사람용 묶음 상세 — 내가 보낸 묶음의 컷·상태·가격 확인.
+// id는 batch_id(묶음) 또는 photo_id(단건, batch_id가 없는 구형 데이터) 모두 허용.
+export const getSentBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batch_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    // 1차: batch_id로 조회
+    let { data: photos, error } = await context.supabase
+      .from("photos")
+      .select("id, subject_id, watermarked_path, price_won, status, created_at")
+      .eq("batch_id", data.batch_id)
+      .eq("uploader_id", context.userId)
+      .order("created_at", { ascending: true });
+    if (error) throw dbError(error);
+    // 2차: 결과 없으면 photo_id로 fallback (batch_id가 null인 구형 단건 사진)
+    if (!photos || photos.length === 0) {
+      const { data: single, error: e2 } = await context.supabase
+        .from("photos")
+        .select("id, subject_id, watermarked_path, price_won, status, created_at")
+        .eq("id", data.batch_id)
+        .eq("uploader_id", context.userId)
+        .limit(1);
+      if (e2) throw dbError(e2);
+      photos = single ?? [];
+    }
+    const list = photos ?? [];
+    if (list.length === 0) throw new Error("묶음을 찾을 수 없어요");
+
+    const { data: subject } = await context.supabase
+      .from("profiles")
+      .select("handle, display_name, avatar_url")
+      .eq("id", list[0].subject_id)
+      .single();
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const wm = (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? [];
+    const items = list.map((p, i) => ({ id: p.id, status: p.status, price_won: p.price_won, preview_url: wm[i]?.signedUrl ?? null }));
+    return { subject, photos: items };
+  });
+
+// 묶음의 '대기 중' 컷 가격 일괄 변경 (소장된 컷은 유지).
+export const updateBatchPrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batch_id: z.string().uuid(), price_won: z.number().int().min(1000).max(1000000) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("photos")
+      .update({ price_won: data.price_won })
+      .eq("batch_id", data.batch_id)
+      .eq("uploader_id", context.userId)
+      .eq("status", "available");
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+// 묶음에서 선택한 사진들만 결제. 항목별로 검증 후 성공분만 반환.
+export const purchasePhotos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(50) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const results: { id: string; original_url: string | null }[] = [];
+    for (const id of data.ids) {
+      const { data: photo, error } = await supabaseAdmin
+        .from("photos")
+        .select("id, uploader_id, subject_id, price_won, status, original_path")
+        .eq("id", id)
+        .single();
+      if (error || !photo) continue;
+      if (photo.subject_id !== context.userId || photo.status !== "available") continue;
+      const earning = Math.floor(photo.price_won * EARNING_RATE);
+      const { error: insErr } = await supabaseAdmin.from("purchases").insert({
+        photo_id: photo.id,
+        buyer_id: context.userId,
+        uploader_id: photo.uploader_id,
+        amount_won: photo.price_won,
+        uploader_earning_won: earning,
+        status: "completed",
+      });
+      if (insErr) continue;
+      await supabaseAdmin.from("photos").update({ status: "sold" }).eq("id", photo.id);
+      const { data: signed } = await supabaseAdmin.storage.from("photos-original").createSignedUrl(photo.original_path, 60 * 10);
+      results.push({ id: photo.id, original_url: signed?.signedUrl ?? null });
+    }
+    if (results.length === 0) throw new Error("소장할 수 있는 사진이 없어요");
+    return { results };
   });
 
 export const reportPhoto = createServerFn({ method: "POST" })
@@ -256,7 +409,7 @@ export const reportPhoto = createServerFn({ method: "POST" })
       reporter_id: context.userId,
       reason: data.reason,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     // also remove from feed
     await context.supabase.from("photos").update({ status: "removed" }).eq("id", data.id);
     return { ok: true };
@@ -270,8 +423,55 @@ export const removePhoto = createServerFn({ method: "POST" })
       .from("photos")
       .update({ status: "removed" })
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
+  });
+
+// 전송 취소 — 보낸 사람이 '구매 전(available)'에만 회수. 사진을 완전히 삭제해
+// 받는 사람의 받은함에서도 사라지게(동기화)한다.
+export const cancelPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: photo, error } = await supabaseAdmin
+      .from("photos")
+      .select("id, uploader_id, status, original_path, watermarked_path")
+      .eq("id", data.id)
+      .single();
+    if (error || !photo) throw new Error("사진을 찾을 수 없어요");
+    if (photo.uploader_id !== context.userId) throw new Error("내가 보낸 사진만 취소할 수 있어요");
+    if (photo.status !== "available") throw new Error("이미 소장되었거나 취소할 수 없는 상태예요");
+
+    // 스토리지 원본/워터마크 제거 후 행 삭제 (양쪽 목록에서 사라짐)
+    await supabaseAdmin.storage.from("photos-original").remove([photo.original_path]);
+    await supabaseAdmin.storage.from("photos-watermarked").remove([photo.watermarked_path]);
+    const { error: delErr } = await supabaseAdmin.from("photos").delete().eq("id", photo.id);
+    if (delErr) throw dbError(delErr);
+    return { ok: true };
+  });
+
+// 묶음 단위 취소 — 보낸 사람이 '구매 전(available)' 사진들을 한 번에 회수.
+export const cancelPhotos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(50) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let canceled = 0;
+    for (const id of data.ids) {
+      const { data: photo } = await supabaseAdmin
+        .from("photos")
+        .select("id, uploader_id, status, original_path, watermarked_path")
+        .eq("id", id)
+        .single();
+      if (!photo || photo.uploader_id !== context.userId || photo.status !== "available") continue;
+      await supabaseAdmin.storage.from("photos-original").remove([photo.original_path]);
+      await supabaseAdmin.storage.from("photos-watermarked").remove([photo.watermarked_path]);
+      const { error: delErr } = await supabaseAdmin.from("photos").delete().eq("id", photo.id);
+      if (!delErr) canceled++;
+    }
+    if (canceled === 0) throw new Error("취소할 수 있는 사진이 없어요");
+    return { canceled };
   });
 
 export const getMyProfile = createServerFn({ method: "GET" })
@@ -282,7 +482,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .select("id, handle, display_name, avatar_url, allow_until")
       .eq("id", context.userId)
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { profile: data };
   });
 
@@ -301,7 +501,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ handle: data.handle, display_name: data.display_name })
       .eq("id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -317,7 +517,7 @@ export const getFriends = createServerFn({ method: "GET" })
       .from("friendships")
       .select("requester_id, addressee_id, status")
       .or(`requester_id.eq.${me},addressee_id.eq.${me}`);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     // 상대 id 모으기
     const otherOf = (r: { requester_id: string; addressee_id: string }) =>
@@ -372,7 +572,7 @@ export const sendFriendRequest = createServerFn({ method: "POST" })
         { requester_id: me, addressee_id: data.to_id, status: "pending" },
         { onConflict: "requester_id,addressee_id", ignoreDuplicates: true },
       );
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { status: "pending" as const };
   });
 
@@ -388,14 +588,14 @@ export const respondFriendRequest = createServerFn({ method: "POST" })
         .eq("requester_id", data.from_id)
         .eq("addressee_id", me)
         .eq("status", "pending");
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
     } else {
       const { error } = await context.supabase
         .from("friendships")
         .delete()
         .eq("requester_id", data.from_id)
         .eq("addressee_id", me);
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
     }
     return { ok: true };
   });
@@ -411,7 +611,7 @@ export const removeFriend = createServerFn({ method: "POST" })
       .or(
         `and(requester_id.eq.${me},addressee_id.eq.${data.other_id}),and(requester_id.eq.${data.other_id},addressee_id.eq.${me})`,
       );
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -424,6 +624,6 @@ export const setAllowWindow = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ allow_until })
       .eq("id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { allow_until };
   });

@@ -19,7 +19,9 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticated/friends'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
+import { Route as AuthenticatedSentIdRouteImport } from './routes/_authenticated/sent.$id'
 import { Route as AuthenticatedPhotoIdRouteImport } from './routes/_authenticated/photo.$id'
+import { Route as AuthenticatedBatchIdRouteImport } from './routes/_authenticated/batch.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -71,9 +73,19 @@ const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
   path: '/feed',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSentIdRoute = AuthenticatedSentIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedSentRoute,
+} as any)
 const AuthenticatedPhotoIdRoute = AuthenticatedPhotoIdRouteImport.update({
   id: '/photo/$id',
   path: '/photo/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBatchIdRoute = AuthenticatedBatchIdRouteImport.update({
+  id: '/batch/$id',
+  path: '/batch/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -84,10 +96,12 @@ export interface FileRoutesByFullPath {
   '/friends': typeof AuthenticatedFriendsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/sent': typeof AuthenticatedSentRoute
+  '/sent': typeof AuthenticatedSentRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
+  '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
+  '/sent/$id': typeof AuthenticatedSentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,10 +110,12 @@ export interface FileRoutesByTo {
   '/friends': typeof AuthenticatedFriendsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/sent': typeof AuthenticatedSentRoute
+  '/sent': typeof AuthenticatedSentRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
+  '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
+  '/sent/$id': typeof AuthenticatedSentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,10 +126,12 @@ export interface FileRoutesById {
   '/_authenticated/friends': typeof AuthenticatedFriendsRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/_authenticated/sent': typeof AuthenticatedSentRoute
+  '/_authenticated/sent': typeof AuthenticatedSentRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/upload': typeof AuthenticatedUploadRoute
+  '/_authenticated/batch/$id': typeof AuthenticatedBatchIdRoute
   '/_authenticated/photo/$id': typeof AuthenticatedPhotoIdRoute
+  '/_authenticated/sent/$id': typeof AuthenticatedSentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,7 +145,9 @@ export interface FileRouteTypes {
     | '/sent'
     | '/settings'
     | '/upload'
+    | '/batch/$id'
     | '/photo/$id'
+    | '/sent/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,7 +159,9 @@ export interface FileRouteTypes {
     | '/sent'
     | '/settings'
     | '/upload'
+    | '/batch/$id'
     | '/photo/$id'
+    | '/sent/$id'
   id:
     | '__root__'
     | '/'
@@ -152,7 +174,9 @@ export interface FileRouteTypes {
     | '/_authenticated/sent'
     | '/_authenticated/settings'
     | '/_authenticated/upload'
+    | '/_authenticated/batch/$id'
     | '/_authenticated/photo/$id'
+    | '/_authenticated/sent/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -233,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFeedRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sent/$id': {
+      id: '/_authenticated/sent/$id'
+      path: '/$id'
+      fullPath: '/sent/$id'
+      preLoaderRoute: typeof AuthenticatedSentIdRouteImport
+      parentRoute: typeof AuthenticatedSentRoute
+    }
     '/_authenticated/photo/$id': {
       id: '/_authenticated/photo/$id'
       path: '/photo/$id'
@@ -240,17 +271,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPhotoIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/batch/$id': {
+      id: '/_authenticated/batch/$id'
+      path: '/batch/$id'
+      fullPath: '/batch/$id'
+      preLoaderRoute: typeof AuthenticatedBatchIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
+
+interface AuthenticatedSentRouteChildren {
+  AuthenticatedSentIdRoute: typeof AuthenticatedSentIdRoute
+}
+
+const AuthenticatedSentRouteChildren: AuthenticatedSentRouteChildren = {
+  AuthenticatedSentIdRoute: AuthenticatedSentIdRoute,
+}
+
+const AuthenticatedSentRouteWithChildren =
+  AuthenticatedSentRoute._addFileChildren(AuthenticatedSentRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
   AuthenticatedFriendsRoute: typeof AuthenticatedFriendsRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
-  AuthenticatedSentRoute: typeof AuthenticatedSentRoute
+  AuthenticatedSentRoute: typeof AuthenticatedSentRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedUploadRoute: typeof AuthenticatedUploadRoute
+  AuthenticatedBatchIdRoute: typeof AuthenticatedBatchIdRoute
   AuthenticatedPhotoIdRoute: typeof AuthenticatedPhotoIdRoute
 }
 
@@ -259,9 +309,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFriendsRoute: AuthenticatedFriendsRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
-  AuthenticatedSentRoute: AuthenticatedSentRoute,
+  AuthenticatedSentRoute: AuthenticatedSentRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedUploadRoute: AuthenticatedUploadRoute,
+  AuthenticatedBatchIdRoute: AuthenticatedBatchIdRoute,
   AuthenticatedPhotoIdRoute: AuthenticatedPhotoIdRoute,
 }
 

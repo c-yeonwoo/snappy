@@ -1,16 +1,16 @@
 import { formatWon } from "@/lib/format";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { searchProfiles, createPhoto, getMyProfile, getFriends, sendFriendRequest } from "@/lib/photos.functions";
+import { searchProfiles, createPhoto, getMyProfile, getFriends, sendFriendRequest, getMySent } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { watermarkImage, compressOriginal } from "@/lib/watermark";
 import { toast } from "sonner";
-import { Search, Upload, X, Film, Image as ImageIcon, Play, Lock, UserPlus, Users } from "lucide-react";
+import { Upload, X, Film, Image as ImageIcon, Play, Lock, UserPlus, Users, Clock } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/upload")({
@@ -30,24 +30,49 @@ function UploadPage() {
   const qc = useQueryClient();
   const { data: meData } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const myHandle = meData?.profile?.handle as string | undefined;
+  const sentFn = useServerFn(getMySent);
   const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
+  const { data: sentData } = useQuery({ queryKey: ["sent"], queryFn: () => sentFn() });
   const friends = friendsData?.friends ?? [];
   const isFriend = (id: string) => friends.some((f) => f.id === id);
+
+  // 최근 보낸 사람 10명 (최신순, 중복 제거). 없으면 친구 목록으로 폴백.
+  const recentRecipients: Profile[] = (() => {
+    const seen = new Set<string>();
+    const out: Profile[] = [];
+    for (const p of sentData?.photos ?? []) {
+      if (!p.subject || seen.has(p.subject_id)) continue;
+      seen.add(p.subject_id);
+      out.push({ id: p.subject_id, handle: p.subject.handle, display_name: p.subject.display_name, avatar_url: null });
+      if (out.length >= 10) break;
+    }
+    return out;
+  })();
+  const quickList = recentRecipients.length ? recentRecipients : friends;
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
   const [selected, setSelected] = useState<Profile | null>(null);
-  const [mode, setMode] = useState<"friends" | "id">(friends.length > 0 ? "friends" : "id");
+  const [mode, setMode] = useState<"recent" | "id">("recent");
   const [files, setFiles] = useState<File[]>([]);
   const [price, setPrice] = useState(3000); // 원 (기본값)
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function doSearch() {
-    if (!q.trim()) return;
-    const { results } = await search({ data: { q } });
-    setResults(results);
-  }
+  // @ID 라이브 자동완성 (디바운스 250ms). 결과는 친구를 최상단으로 정렬.
+  useEffect(() => {
+    if (mode !== "id") return;
+    const term = q.trim();
+    if (!term) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const { results } = await search({ data: { q: term } });
+        const sorted = [...results].sort((a, b) => Number(isFriend(b.id)) - Number(isFriend(a.id)));
+        setResults(sorted);
+      } catch { /* noop */ }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function doUpload() {
     if (!selected || files.length === 0) {
@@ -60,6 +85,7 @@ function UploadPage() {
     try {
       const { data: userResp } = await supabase.auth.getUser();
       const uploaderId = userResp.user!.id;
+      const batchId = crypto.randomUUID(); // 이번에 보내는 사진들을 한 묶음으로
       let succeeded = 0;
       for (const file of files) {
         const [originalBlob, watermarkedBlob] = await Promise.all([
@@ -86,6 +112,7 @@ function UploadPage() {
             watermarked_path: watermarkedPath,
             price_won: price,
             note: note || undefined,
+            batch_id: batchId,
           },
         });
         succeeded++;
@@ -112,7 +139,7 @@ function UploadPage() {
           <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">1 · 받는 사람</Label>
           {!selected && (
             <div className="inline-flex shrink-0 rounded-full bg-secondary p-1 text-xs font-semibold">
-              <button type="button" onClick={() => setMode("friends")} className={`rounded-full px-3 py-1.5 transition ${mode === "friends" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>친구</button>
+              <button type="button" onClick={() => setMode("recent")} className={`rounded-full px-3 py-1.5 transition ${mode === "recent" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>최근</button>
               <button type="button" onClick={() => setMode("id")} className={`rounded-full px-3 py-1.5 transition ${mode === "id" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>@ID로 보내기</button>
             </div>
           )}
@@ -148,30 +175,32 @@ function UploadPage() {
           </div>
         ) : (
           <div className="mt-4">
-            {mode === "friends" ? (
-              friends.length === 0 ? (
-                <p className="text-xs text-muted-foreground">아직 친구가 없어요. @ID로 검색해서 추가해보세요.</p>
+            {mode === "recent" ? (
+              quickList.length === 0 ? (
+                <p className="text-xs text-muted-foreground">아직 보낸 사람이 없어요. @ID로 검색해 보내보세요.</p>
               ) : (
-                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                  {friends.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setSelected({ id: f.id, handle: f.handle, display_name: f.display_name, avatar_url: null })}
-                      className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 shadow-sm"
-                    >
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-brand-soft font-display font-bold">{f.display_name?.[0] ?? "?"}</div>
-                      <span className="max-w-[64px] truncate text-[11px] font-semibold">@{f.handle}</span>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                    <Clock className="h-3 w-3" /> {recentRecipients.length ? "최근 보낸 사람" : "내 친구"}
+                  </p>
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                    {quickList.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setSelected({ id: f.id, handle: f.handle, display_name: f.display_name, avatar_url: null })}
+                        className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 shadow-sm"
+                      >
+                        <div className="grid h-12 w-12 place-items-center rounded-full bg-brand-soft font-display font-bold">{f.display_name?.[0] ?? "?"}</div>
+                        <span className="max-w-[64px] truncate text-[11px] font-semibold">@{f.handle}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )
             ) : (
               <>
-                <div className="flex gap-2">
-                  <Input placeholder="@핸들 또는 이름" className="rounded-full" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doSearch())} />
-                  <Button type="button" className="rounded-full" onClick={doSearch}><Search className="h-4 w-4" /></Button>
-                </div>
+                <Input placeholder="@핸들 또는 이름으로 검색" className="rounded-full" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
                 {results.length > 0 && (
                   <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border">
                     {results.map((r) => (
@@ -185,6 +214,9 @@ function UploadPage() {
                       </li>
                     ))}
                   </ul>
+                )}
+                {q.trim() && results.length === 0 && (
+                  <p className="mt-3 text-xs text-muted-foreground">검색 결과가 없어요</p>
                 )}
               </>
             )}

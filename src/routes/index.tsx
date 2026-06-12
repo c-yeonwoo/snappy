@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Snappy — 친구들이 찍어준 스냅샷" },
-      { name: "description", content: "친구들이 찍어준 사진을 피드로 받고, 마음에 드는 컷만 골라 구매하세요." },
+      { name: "description", content: "친구들이 찍어준 사진을 피드로 받고, 마음에 드는 컷만 골라 소장하세요." },
       { property: "og:title", content: "Snappy — 친구들이 찍어준 스냅샷" },
       { property: "og:description", content: "ID 검색으로 빠르게 보내고, 피드에서 골라 받는 캐주얼 포토 마켓." },
     ],
