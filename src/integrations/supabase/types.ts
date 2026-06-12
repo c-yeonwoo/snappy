@@ -14,7 +14,142 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      photos: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          original_path: string
+          price_cents: number
+          status: Database["public"]["Enums"]["photo_status"]
+          subject_id: string
+          uploader_id: string
+          watermarked_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          original_path: string
+          price_cents?: number
+          status?: Database["public"]["Enums"]["photo_status"]
+          subject_id: string
+          uploader_id: string
+          watermarked_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          original_path?: string
+          price_cents?: number
+          status?: Database["public"]["Enums"]["photo_status"]
+          subject_id?: string
+          uploader_id?: string
+          watermarked_path?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name: string
+          handle: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string
+          handle?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchases: {
+        Row: {
+          amount_cents: number
+          buyer_id: string
+          created_at: string
+          id: string
+          photo_id: string
+          status: Database["public"]["Enums"]["purchase_status"]
+          uploader_earning_cents: number
+          uploader_id: string
+        }
+        Insert: {
+          amount_cents: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          photo_id: string
+          status?: Database["public"]["Enums"]["purchase_status"]
+          uploader_earning_cents: number
+          uploader_id: string
+        }
+        Update: {
+          amount_cents?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          photo_id?: string
+          status?: Database["public"]["Enums"]["purchase_status"]
+          uploader_earning_cents?: number
+          uploader_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          photo_id: string
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          photo_id: string
+          reason: string
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          photo_id?: string
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +158,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      photo_status: "available" | "sold" | "removed"
+      purchase_status: "pending" | "completed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +286,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      photo_status: ["available", "sold", "removed"],
+      purchase_status: ["pending", "completed", "failed"],
+    },
   },
 } as const
