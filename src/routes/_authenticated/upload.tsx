@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { searchProfiles, createPhoto } from "@/lib/photos.functions";
+import { searchProfiles, createPhoto, getMyProfile } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { watermarkImage, compressOriginal } from "@/lib/watermark";
 import { toast } from "sonner";
-import { Search, Upload, X, Film, Image as ImageIcon, Play } from "lucide-react";
+import { Search, Upload, X, Film, Image as ImageIcon, Play, Lock, UserPlus, Users } from "lucide-react";
+import { useFriendsStore } from "@/lib/friends-mock";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({ meta: [{ title: "사진 보내기 — Snappy" }] }),
@@ -22,6 +24,10 @@ function UploadPage() {
   const navigate = useNavigate();
   const search = useServerFn(searchProfiles);
   const create = useServerFn(createPhoto);
+  const fetchProfile = useServerFn(getMyProfile);
+  const { data: meData } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const myHandle = meData?.profile?.handle as string | undefined;
+  const { friends, isFriend, addFriend } = useFriendsStore();
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
@@ -42,6 +48,10 @@ function UploadPage() {
       toast.error("받는 사람과 사진을 선택해주세요");
       return;
     }
+    if (!isFriend(selected.id)) {
+      toast.error("친구만 바로 보낼 수 있어요. 받는 사람이 '받기 설정'을 열어두면 보낼 수 있어요.");
+      return;
+    }
     setBusy(true);
     try {
       const { data: userResp } = await supabase.auth.getUser();
@@ -50,7 +60,7 @@ function UploadPage() {
       for (const file of files) {
         const [originalBlob, watermarkedBlob] = await Promise.all([
           compressOriginal(file),
-          watermarkImage(file),
+          watermarkImage(file, myHandle),
         ]);
         const photoId = crypto.randomUUID();
         const originalPath = `${uploaderId}/${photoId}.jpg`;
