@@ -3,6 +3,20 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMySent } from "@/lib/photos.functions";
 import { formatWon } from "@/lib/mock-feed";
+import { useEffect, useState } from "react";
+import { Pencil, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// Frontend-only price overrides until backend exposes an update endpoint.
+const PRICE_KEY = "snappy.priceOverrides.v1";
+function readOverrides(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem(PRICE_KEY) || "{}"); } catch { return {}; }
+}
+function writeOverrides(map: Record<string, number>) {
+  localStorage.setItem(PRICE_KEY, JSON.stringify(map));
+  window.dispatchEvent(new Event("snappy:price"));
+}
 
 export const Route = createFileRoute("/_authenticated/sent")({
   head: () => ({ meta: [{ title: "보낸 사진 — Snappy" }] }),
@@ -12,6 +26,12 @@ export const Route = createFileRoute("/_authenticated/sent")({
 function SentPage() {
   const fn = useServerFn(getMySent);
   const { data, isLoading } = useQuery({ queryKey: ["sent"], queryFn: () => fn() });
+  const [overrides, setOverrides] = useState<Record<string, number>>(() => readOverrides());
+  useEffect(() => {
+    const sync = () => setOverrides(readOverrides());
+    window.addEventListener("snappy:price", sync);
+    return () => window.removeEventListener("snappy:price", sync);
+  }, []);
 
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   const photos = data?.photos ?? [];
@@ -48,22 +68,61 @@ function SentPage() {
               available: { label: "대기 중", cls: "" },
             } as const;
             const s = statusMap[p.status as keyof typeof statusMap] ?? statusMap.available;
+            const basePrice = Math.round(p.price_cents * 13);
+            const currentPrice = overrides[p.id] ?? basePrice;
+            const editable = p.status !== "sold" && p.status !== "removed";
             return (
               <div key={p.id} className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-card shadow-[0_15px_40px_-20px_rgba(125,160,200,0.4)]">
                 <div className="relative aspect-square bg-secondary">
                   {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
                   <span className={`absolute left-2.5 top-2.5 chip ${s.cls}`}>{s.label}</span>
-                  <div className="absolute right-2.5 top-2.5 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-bold text-background">{formatWon(Math.round(p.price_cents * 13))}</div>
+                  <PriceBadge
+                    price={currentPrice}
+                    editable={editable}
+                    onSave={(v) => {
+                      const next = { ...readOverrides(), [p.id]: v };
+                      writeOverrides(next);
+                    }}
+                  />
                 </div>
                 <div className="flex items-center justify-between p-3 text-xs">
                   <span className="text-muted-foreground">to <b className="text-foreground">@{p.subject?.handle ?? "?"}</b></span>
-                  {p.status === "sold" && <span className="font-semibold text-foreground">+{formatWon(Math.round(p.price_cents * 13 * 0.7))}</span>}
+                  {p.status === "sold" && <span className="font-semibold text-foreground">+{formatWon(Math.round(currentPrice * 0.7))}</span>}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function PriceBadge({ price, editable, onSave }: { price: number; editable: boolean; onSave: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(price);
+  useEffect(() => setVal(price), [price]);
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        disabled={!editable}
+        onClick={() => setEditing(true)}
+        className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-bold text-background disabled:opacity-80"
+      >
+        {formatWon(price)}
+        {editable && <Pencil className="h-2.5 w-2.5 opacity-80" />}
+      </button>
+    );
+  }
+  return (
+    <div className="absolute inset-x-2 top-2 flex items-center gap-1 rounded-full bg-foreground/95 px-1.5 py-1 text-background">
+      <Button type="button" variant="ghost" size="sm" className="h-6 rounded-full px-2 text-background hover:bg-white/15" onClick={() => setVal(Math.max(1000, val - 500))}>−</Button>
+      <span className="font-display flex-1 text-center text-[12px] font-extrabold">{formatWon(val)}</span>
+      <Button type="button" variant="ghost" size="sm" className="h-6 rounded-full px-2 text-background hover:bg-white/15" onClick={() => setVal(Math.min(50000, val + 500))}>+</Button>
+      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full text-background hover:bg-white/15" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
+      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { onSave(val); setEditing(false); }}><Check className="h-3 w-3" /></Button>
     </div>
   );
 }
