@@ -1,26 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Camera, Heart, ImagePlus, Sparkles, Play, Coins, Search, Send } from "lucide-react";
+import { Camera, Play, Send, ArrowRight, Lock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Snappy — 친구가 찍어준 스냅샷" },
-      { name: "description", content: "친구가 찍어준 사진·영상을 피드로 받고, 마음에 드는 컷만 골라 구매하세요." },
-      { property: "og:title", content: "Snappy — 친구가 찍어준 스냅샷" },
+      { title: "Snappy — 친구들이 찍어준 스냅샷" },
+      { name: "description", content: "친구들이 찍어준 사진·영상을 피드로 받고, 마음에 드는 컷만 골라 구매하세요." },
+      { property: "og:title", content: "Snappy — 친구들이 찍어준 스냅샷" },
       { property: "og:description", content: "ID 검색으로 빠르게 보내고, 피드에서 골라 받는 캐주얼 포토 마켓." },
     ],
   }),
   component: Index,
 });
 
-const mock = [
-  { tag: "@yuna", tone: "from-sky-soft to-sky", price: 3, video: false },
-  { tag: "@minho", tone: "from-sky to-accent", price: 5, video: true },
-  { tag: "@jiwoo", tone: "from-sky-soft to-accent/70", price: 4, video: false },
-  { tag: "@sora", tone: "from-accent/60 to-sky", price: 3, video: false },
-  { tag: "@dan", tone: "from-sky-deep/40 to-sky", price: 6, video: true },
-  { tag: "@hye", tone: "from-sky-soft to-sky-deep/30", price: 4, video: false },
+// Sample feed preview — overlapping polaroid stack to clearly differ from the in-app grid.
+const preview = [
+  { tag: "@yuna", tone: "from-sky-soft to-sky", rot: "-rotate-6 -translate-x-6", z: "z-10", video: false },
+  { tag: "@minho", tone: "from-sky to-accent", rot: "rotate-3 translate-x-2", z: "z-20", video: true },
+  { tag: "@jiwoo", tone: "from-accent/70 to-sky-deep/40", rot: "rotate-12 translate-x-10 translate-y-3", z: "z-0", video: false },
 ];
 
 function Index() {
@@ -36,74 +34,62 @@ function Index() {
           </span>
           snappy
         </Link>
-        <nav className="flex items-center gap-2">
-          <Link to="/auth"><Button variant="ghost" size="sm" className="rounded-full">로그인</Button></Link>
-          <Link to="/auth"><Button size="sm" className="rounded-full px-4">시작</Button></Link>
-        </nav>
+        <Link to="/auth" className="text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline">
+          로그인
+        </Link>
       </header>
 
       <main className="relative mx-auto max-w-md px-5 pb-24">
-        <section className="pt-3">
-          <span className="chip"><Sparkles className="h-3.5 w-3.5" /> 친구가 찍어준 스냅</span>
-          <h1 className="font-display mt-3 text-4xl font-extrabold leading-[1.05]">
-            맘에 드는 컷만<br />
-            <span className="bg-gradient-to-r from-primary to-sky-deep bg-clip-text text-transparent">가져가요.</span>
-          </h1>
-        </section>
-
-        {/* Quick send — ID 검색 강조 */}
-        <section className="mt-5 rounded-[1.75rem] border border-white/70 bg-card/90 p-4 shadow-[0_20px_50px_-25px_rgba(56,189,248,0.45)] backdrop-blur">
-          <div className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-primary text-primary-foreground"><Send className="h-4 w-4" /></span>
-            <div className="min-w-0">
-              <p className="font-display text-sm font-bold">빠르게 보내기</p>
-              <p className="text-[11px] text-muted-foreground">받는 사람 ID만 알면 끝</p>
-            </div>
-          </div>
-          <Link to="/auth" className="mt-3 flex items-center gap-2 rounded-full bg-secondary px-4 py-2.5 text-sm text-muted-foreground">
-            <Search className="h-4 w-4" />
-            <span className="truncate">@핸들 검색해서 톡 보내기</span>
-            <kbd className="ml-auto rounded bg-card px-1.5 py-0.5 text-[10px] font-bold text-foreground">→</kbd>
-          </Link>
-        </section>
-
-        {/* Sample feed mock */}
-        <section className="mt-6">
-          <div className="mb-2.5 flex items-center justify-between">
-            <p className="font-display text-sm font-bold">@me 의 피드 (예시)</p>
-            <span className="text-[11px] text-muted-foreground">{mock.length} 컷</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {mock.map((c, i) => (
-              <div key={c.tag + i} className={`relative aspect-[4/5] overflow-hidden rounded-[1.25rem] border border-white/70 bg-gradient-to-br ${c.tone} shadow-[0_12px_30px_-15px_rgba(56,189,248,0.45)]`}>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.55),transparent_55%)]" />
-                <div className="absolute left-2 top-2 chip !px-1.5 !py-0.5 !text-[10px] !bg-white/90 !backdrop-blur">
+        {/* Hero with overlapping polaroid stack — distinct from in-app grid */}
+        <section className="pt-2">
+          <div className="relative mx-auto h-[280px] w-full">
+            {preview.map((c, i) => (
+              <div
+                key={c.tag}
+                style={{ left: `${10 + i * 22}%`, top: `${10 + (i % 2) * 18}px` }}
+                className={`absolute h-[210px] w-[150px] rounded-[1.25rem] border-4 border-white bg-gradient-to-br ${c.tone} ${c.rot} ${c.z} shadow-[0_20px_40px_-15px_rgba(56,189,248,0.55)] transition`}
+              >
+                <div className="absolute inset-0 rounded-[0.85rem] bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.55),transparent_55%)]" />
+                <div className="absolute left-2 top-2 chip !px-1.5 !py-0.5 !text-[10px] !bg-white/90">
                   {c.video ? <Play className="h-2.5 w-2.5" /> : <Camera className="h-2.5 w-2.5" />} {c.tag}
                 </div>
-                <div className="absolute bottom-2 right-2 rounded-full bg-foreground/85 px-1.5 py-0.5 text-[10px] font-bold text-background">${c.price}</div>
               </div>
             ))}
           </div>
+
+          <h1 className="font-display mt-2 text-[2.5rem] font-extrabold leading-[1.05]">
+            친구들이 찍어준<br />
+            <span className="bg-gradient-to-r from-primary to-sky-deep bg-clip-text text-transparent">스냅을 모아요.</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            ID로 빠르게 보내고, 받은 컷에서 마음에 드는 것만 골라 원본을 가져가세요.
+          </p>
         </section>
 
-        {/* Tiny how it works */}
-        <section className="mt-7 grid grid-cols-3 gap-2">
+        {/* Trust row */}
+        <section className="mt-5 grid grid-cols-3 gap-2">
           {[
-            { icon: ImagePlus, t: "보내기", b: "ID 검색" },
-            { icon: Heart, t: "고르기", b: "워터마크" },
-            { icon: Coins, t: "결제", b: "원본 GET" },
+            { icon: Send, t: "ID 한 줄로" },
+            { icon: Lock, t: "워터마크 보호" },
+            { icon: Users, t: "친구만 받기" },
           ].map((f) => (
-            <div key={f.t} className="rounded-2xl border border-white/70 bg-card/80 p-3 text-center backdrop-blur">
-              <div className="mx-auto grid h-8 w-8 place-items-center rounded-xl bg-secondary"><f.icon className="h-4 w-4" /></div>
-              <p className="font-display mt-1.5 text-xs font-bold">{f.t}</p>
-              <p className="text-[10px] text-muted-foreground">{f.b}</p>
+            <div key={f.t} className="rounded-2xl border border-white/70 bg-card/80 p-2.5 text-center backdrop-blur">
+              <div className="mx-auto grid h-7 w-7 place-items-center rounded-xl bg-secondary"><f.icon className="h-3.5 w-3.5" /></div>
+              <p className="mt-1 text-[11px] font-semibold">{f.t}</p>
             </div>
           ))}
         </section>
 
-        <div className="mt-7 flex flex-col gap-2">
-          <Link to="/auth"><Button size="lg" className="w-full rounded-full">무료로 시작</Button></Link>
-          <Link to="/auth"><Button size="lg" variant="outline" className="w-full rounded-full bg-card">로그인</Button></Link>
+        {/* Single primary CTA */}
+        <div className="mt-7">
+          <Link to="/auth">
+            <Button size="lg" className="w-full rounded-full text-base font-bold">
+              시작하기 <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            이미 계정이 있으세요? <Link to="/auth" className="font-semibold text-foreground underline-offset-4 hover:underline">로그인</Link>
+          </p>
         </div>
 
         <footer className="mt-10 text-center text-xs text-muted-foreground">made by snappy</footer>
