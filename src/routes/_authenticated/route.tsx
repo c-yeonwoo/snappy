@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useRouter, useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Camera, Inbox, ImagePlus, Send, User } from "lucide-react";
+import { Camera, Inbox, ImagePlus, Images, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -23,7 +23,7 @@ function AuthedLayout() {
   const tabs = [
     { to: "/feed", icon: Inbox, label: "받은함" },
     { to: "/upload", icon: ImagePlus, label: "보내기" },
-    { to: "/sent", icon: Send, label: "보낸함" },
+    { to: "/sent", icon: Images, label: "보낸 사진" },
     { to: "/profile", icon: User, label: "나" },
   ] as const;
   const active = (to: string) => loc.pathname === to;
