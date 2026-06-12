@@ -141,10 +141,19 @@
     border-color: var(--color-border);
   }
 
+  html {
+    /* slightly smaller base for a more comfortable reading size on mobile */
+    font-size: 15px;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     background-image:
       radial-gradient(900px 600px at 0% -10%, oklch(0.93 0.06 225 / 0.7), transparent 60%),
       radial-gradient(700px 500px at 100% 10%, oklch(0.95 0.05 215 / 0.55), transparent 60%);
@@ -153,8 +162,17 @@
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    font-weight: 700;
   }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1.1rem; }
+  h4 { font-size: 1rem; }
+
+  /* tone down extreme weights used throughout the app */
+  .font-extrabold { font-weight: 700 !important; }
 }
 
 @utility font-display {
