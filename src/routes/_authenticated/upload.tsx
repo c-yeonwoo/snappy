@@ -1,3 +1,4 @@
+import { formatWon } from "@/lib/mock-feed";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -33,7 +34,7 @@ function UploadPage() {
   const [results, setResults] = useState<Profile[]>([]);
   const [selected, setSelected] = useState<Profile | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [price, setPrice] = useState(5);
+  const [price, setPrice] = useState(5000); // 원
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -80,7 +81,8 @@ function UploadPage() {
             subject_id: selected.id,
             original_path: originalPath,
             watermarked_path: watermarkedPath,
-            price_cents: Math.round(price * 100),
+            // backend still expects cents; convert KRW preview to legacy unit (placeholder).
+            price_cents: Math.max(100, Math.round(price / 13)),
             note: note || undefined,
           },
         });
@@ -206,14 +208,14 @@ function UploadPage() {
 
       <section className="rounded-[1.75rem] border border-white/70 bg-card/90 p-6 backdrop-blur space-y-5">
         <div>
-          <Label htmlFor="price" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">3 · 한 컷 가격 (USD)</Label>
+          <Label htmlFor="price" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">3 · 한 컷 가격</Label>
           <div className="mt-3 flex items-center gap-3">
             <div className="flex items-center rounded-full bg-secondary px-1">
-              <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1, price - 1))}>−</Button>
-              <span className="font-display w-14 text-center text-lg font-extrabold">${price}</span>
-              <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(100, price + 1))}>+</Button>
+              <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
+              <span className="font-display w-24 text-center text-base font-extrabold">{formatWon(price)}</span>
+              <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
             </div>
-            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">${(price * 0.7).toFixed(2)}</b> 내 적립</p>
+            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">{formatWon(Math.round(price * 0.7))}</b> 적립</p>
           </div>
         </div>
         <div>
