@@ -1,14 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
 import { toast } from "sonner";
-import { Download, Flag, Trash2, Play, ShieldAlert } from "lucide-react";
-import { useEffect } from "react";
+import { ArrowLeft, Download, Play, ShieldCheck, MessageCircle, Camera, BookmarkCheck } from "lucide-react";
+import { getMockPhoto, isPurchased, purchase, usePurchased, relativeTime } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
   head: () => ({ meta: [{ title: "사진 — Snappy" }] }),
@@ -18,23 +13,16 @@ export const Route = createFileRoute("/_authenticated/photo/$id")({
 function PhotoDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const fetchDetail = useServerFn(getPhotoDetail);
-  const buy = useServerFn(purchasePhoto);
-  const report = useServerFn(reportPhoto);
-  const remove = useServerFn(removePhoto);
-  const { data, isLoading } = useQuery({ queryKey: ["photo", id], queryFn: () => fetchDetail({ data: { id } }) });
-  const [reason, setReason] = useState("");
-  const [originalUrl, setOriginalUrl] = useState<string | null>(null);
+  usePurchased(); // re-render when purchase state changes
+  const p = getMockPhoto(id);
+  const owned = p ? isPurchased(p.id) : false;
   const [busy, setBusy] = useState(false);
+  const [justBought, setJustBought] = useState(false);
 
   // Best-effort screenshot deterrent: blur preview while the tab is in the
-  // background. Real screenshot blocking is impossible on the web — when the
-  // app runs as a native shell we will call FLAG_SECURE / equivalent.
+  // background. Real screenshot blocking lives in the native shell.
   useEffect(() => {
-    const onVis = () => {
-      document.body.classList.toggle("is-hidden", document.hidden);
-    };
+    const onVis = () => document.body.classList.toggle("is-hidden", document.hidden);
     document.addEventListener("visibilitychange", onVis);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
@@ -42,108 +30,126 @@ function PhotoDetailPage() {
     };
   }, []);
 
-  if (isLoading || !data) return <p className="text-muted-foreground">불러오는 중…</p>;
-  const p = data.photo;
-  const isSubject = p.is_subject;
+  if (!p) {
+    return (
+      <div className="mx-auto max-w-md text-center">
+        <p className="text-muted-foreground">사진을 찾을 수 없어요.</p>
+        <Link to="/feed" className="mt-3 inline-block text-sm font-semibold underline">받은함으로</Link>
+      </div>
+    );
+  }
 
   async function handleBuy() {
     setBusy(true);
+    await new Promise((r) => setTimeout(r, 600));
+    purchase(p!.id);
+    setJustBought(true);
+    setBusy(false);
+    toast.success("결제 완료! 워터마크가 풀렸어요.");
+  }
+
+  async function handleDownload() {
     try {
-      const res = await buy({ data: { id } });
-      setOriginalUrl(res.original_url);
-      toast.success("구매 완료! 원본을 받았어요.");
-      qc.invalidateQueries({ queryKey: ["feed"] });
-      qc.invalidateQueries({ queryKey: ["photo", id] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "구매 실패");
-    } finally {
-      setBusy(false);
+      const res = await fetch(p!.original_url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `snappy-${p!.id}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("다운로드 실패");
     }
   }
 
-  async function handleReport() {
-    if (!reason.trim()) return;
-    try {
-      await report({ data: { id, reason } });
-      toast.success("신고가 접수되었고 사진은 피드에서 삭제됐어요.");
-      navigate({ to: "/feed" });
-    } catch (e: any) {
-      toast.error(e?.message ?? "신고 실패");
-    }
-  }
-
-  async function handleRemove() {
-    if (!confirm("이 사진을 내 피드에서 삭제할까요?")) return;
-    try {
-      await remove({ data: { id } });
-      toast.success("삭제됐어요");
-      navigate({ to: "/feed" });
-    } catch (e: any) {
-      toast.error(e?.message ?? "삭제 실패");
-    }
-  }
-
-  const finalOriginalUrl = originalUrl ?? p.original_url;
-  const isVideo = !!p.preview_url && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(p.preview_url);
+  const unlocked = owned || justBought;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-card shadow-[0_25px_60px_-30px_rgba(125,160,200,0.5)]">
-        <div
-          className="no-capture no-capture-hide relative bg-secondary"
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          {p.preview_url && (
-            isVideo
-              ? <video src={p.preview_url} controls controlsList="nodownload" disablePictureInPicture className="mx-auto max-h-[70vh] w-full object-contain" />
-              : <img src={p.preview_url} alt="" draggable={false} className="mx-auto max-h-[70vh] w-full object-contain" />
-          )}
-          {isVideo && <span className="absolute left-3 top-3 chip !bg-white/90"><Play className="h-3 w-3" />영상</span>}
-          <span className="absolute right-3 top-3 chip !bg-foreground/85 !text-background !border-transparent"><ShieldAlert className="h-3 w-3" />캡처 금지</span>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">촬영</p>
-              <p className="font-display truncate text-lg font-extrabold">@{p.uploader?.handle}</p>
-              {p.note && <p className="mt-2 rounded-2xl bg-sky/70 px-3 py-2 text-sm">💬 {p.note}</p>}
+    <div className="mx-auto max-w-md">
+      <button onClick={() => navigate({ to: "/feed" })} className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground">
+        <ArrowLeft className="h-4 w-4" /> 받은함
+      </button>
+
+      {/* Expanded image */}
+      <div className="no-capture no-capture-hide relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-card shadow-[0_25px_60px_-30px_rgba(125,160,200,0.5)]" onContextMenu={(e) => e.preventDefault()}>
+        <div className="relative aspect-[4/5] bg-secondary">
+          <img src={p.preview_url} alt="" draggable={false} className="h-full w-full object-cover" />
+
+          {/* dense diagonal watermark — disappears immediately on purchase */}
+          {!unlocked && (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div className="absolute inset-[-30%] grid grid-cols-3 gap-y-10 rotate-[-18deg] place-items-center">
+                {Array.from({ length: 36 }).map((_, i) => (
+                  <span key={i} className="text-[13px] font-extrabold tracking-[0.25em] text-white/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
+                    SNAPPY · @me
+                  </span>
+                ))}
+              </div>
             </div>
+          )}
+
+          {p.is_video && (
+            <span className="absolute left-3 top-3 chip !bg-white/90"><Play className="h-3 w-3" /> 영상</span>
+          )}
+          {unlocked ? (
+            <span className="absolute right-3 top-3 chip !bg-primary !text-primary-foreground !border-primary/40"><ShieldCheck className="h-3 w-3" /> 원본</span>
+          ) : (
+            <span className="absolute right-3 top-3 chip !bg-foreground/85 !text-background !border-transparent"><ShieldCheck className="h-3 w-3" /> 보호 중</span>
+          )}
+        </div>
+      </div>
+
+      {/* Meta */}
+      <div className="mt-4 rounded-[1.5rem] border border-white/70 bg-card/90 p-5 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-full bg-sky-soft font-display font-extrabold">
+            {p.uploader.display_name[0]}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+              <Camera className="h-3 w-3" /> photo by
+            </p>
+            <p className="font-display truncate text-base font-extrabold">
+              {p.uploader.display_name} <span className="text-muted-foreground">@{p.uploader.handle}</span>
+            </p>
+          </div>
+          <span className="text-[11px] text-muted-foreground">{relativeTime(p.received_at)}</span>
+        </div>
+
+        {p.note && (
+          <div className="mt-4 flex gap-2 rounded-2xl bg-secondary px-3 py-2.5">
+            <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <p className="text-sm leading-relaxed">{p.note}</p>
+          </div>
+        )}
+
+        <div className="mt-5 flex items-end justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">가격</p>
             <p className="font-display text-3xl font-extrabold text-primary">${(p.price_cents / 100).toFixed(2)}</p>
           </div>
-
-          {p.status === "available" && isSubject ? (
-            <div className="mt-6 flex gap-2">
-              <Button className="h-12 flex-1 rounded-full text-base" onClick={handleBuy} disabled={busy}>
-                {busy ? "처리 중…" : "결제하고 원본 받기"}
-              </Button>
-              <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" onClick={handleRemove} title="삭제"><Trash2 className="h-4 w-4" /></Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" title="신고"><Flag className="h-4 w-4" /></Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>이 사진 신고하기</DialogTitle></DialogHeader>
-                  <p className="text-sm text-muted-foreground">합의 없이 찍힌 사진이면 신고해주세요. 신고와 동시에 피드에서 삭제됩니다.</p>
-                  <Textarea placeholder="신고 사유" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={1000} />
-                  <Button variant="destructive" onClick={handleReport}>신고하기</Button>
-                </DialogContent>
-              </Dialog>
-            </div>
-          ) : p.status === "sold" && isSubject ? (
-            <div className="mt-6">
-              {finalOriginalUrl ? (
-                <a href={finalOriginalUrl} download className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground shadow-md hover:bg-primary/90">
-                  <Download className="h-4 w-4" /> 원본 바로 다운로드
-                </a>
-              ) : (
-                <p className="text-sm text-muted-foreground">구매 완료된 사진이에요.</p>
-              )}
-            </div>
-          ) : (
-            <p className="mt-6 text-sm text-muted-foreground">
-              {p.status === "sold" ? "이 사진은 판매 완료됐어요." : p.status === "removed" ? "삭제된 사진이에요." : "상대방의 응답을 기다리는 중이에요."}
-            </p>
+          {unlocked && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
+              <BookmarkCheck className="h-3.5 w-3.5" /> 보관함 저장됨
+            </span>
           )}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-5">
+          {unlocked ? (
+            <Button className="h-12 w-full rounded-full text-base" onClick={handleDownload}>
+              <Download className="mr-1.5 h-4 w-4" /> 원본 다운로드
+            </Button>
+          ) : (
+            <Button className="h-12 w-full rounded-full text-base" onClick={handleBuy} disabled={busy}>
+              {busy ? "결제 중…" : `${(p.price_cents / 100).toFixed(2)}$ 결제하고 원본 받기`}
+            </Button>
+          )}
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">결제 즉시 워터마크가 풀리고 다운로드할 수 있어요.</p>
         </div>
       </div>
     </div>
