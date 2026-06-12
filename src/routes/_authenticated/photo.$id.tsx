@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft, Download, ShieldCheck, MessageCircle, Camera, BookmarkCheck, Flag, Trash2 } from "lucide-react";
-import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
+import { confirmPhotoPurchase, getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
 import { relativeTime, formatPoint } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
@@ -20,6 +20,7 @@ function PhotoDetailPage() {
   const qc = useQueryClient();
   const detailFn = useServerFn(getPhotoDetail);
   const buyFn = useServerFn(purchasePhoto);
+  const confirmBuyFn = useServerFn(confirmPhotoPurchase);
   const reportFn = useServerFn(reportPhoto);
   const removeFn = useServerFn(removePhoto);
 
@@ -61,7 +62,7 @@ function PhotoDetailPage() {
     );
   }
 
-  const originalUrl = boughtUrl ?? p.original_url;
+    const originalUrl = boughtUrl ?? p.original_url;
   const unlocked = (p.status === "sold" && p.is_subject) || !!boughtUrl;
   const canBuy = p.is_subject && p.status === "available";
 
@@ -69,7 +70,12 @@ function PhotoDetailPage() {
     setBusy(true);
     try {
       const res = await buyFn({ data: { id } });
-      setBoughtUrl(res.original_url);
+      if (res.status === "completed") {
+        setBoughtUrl(res.original_url);
+      } else {
+        const confirmed = await confirmBuyFn({ data: { session_id: res.session_id } });
+        setBoughtUrl(confirmed.photos?.[id] ?? null);
+      }
       qc.invalidateQueries({ queryKey: ["photo", id] });
       qc.invalidateQueries({ queryKey: ["feed"] });
       toast.success("소장 완료! 워터마크가 풀렸어요.");

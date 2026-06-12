@@ -1,7 +1,13 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { getMyProfile, getMyFeed, getFriends } from "@/lib/photos.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  requestPointCharge,
+  requestPointWithdraw,
+  getMyProfile,
+  getMyFeed,
+  getFriends,
+} from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { formatRemaining, isWindowOpen, formatPoint } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
@@ -18,6 +24,9 @@ function ProfilePage() {
   const fetchProfile = useServerFn(getMyProfile);
   const feedFn = useServerFn(getMyFeed);
   const friendsFn = useServerFn(getFriends);
+  const chargePointFn = useServerFn(requestPointCharge);
+  const withdrawPointFn = useServerFn(requestPointWithdraw);
+  const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const { data: feedData } = useQuery({ queryKey: ["feed"], queryFn: () => feedFn() });
   const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
@@ -42,6 +51,28 @@ function ProfilePage() {
       toast.success(`@${handle} 복사됐어요`);
     } catch {
       toast.error("복사 실패");
+    }
+  }
+
+  async function requestPoint(kind: "charge" | "withdraw") {
+    const raw = window.prompt(kind === "charge" ? "충전할 금액(원)을 입력해주세요" : "출금할 금액(원)을 입력해주세요");
+    if (!raw) return;
+    const amount = Number(raw.replace(/[^0-9]/g, ""));
+    if (!Number.isFinite(amount) || amount < 1000 || amount > 200000) {
+      toast.error("금액은 1,000원 ~ 200,000원 범위로 입력해야 해요.");
+      return;
+    }
+    try {
+      const runner = kind === "charge" ? chargePointFn : withdrawPointFn;
+      const res = await runner({ data: { amount_won: amount } });
+      if (res.status === "completed") {
+        toast.success(`${kind === "charge" ? "충전" : "출금"} 요청이 완료됐어요`);
+      } else {
+        toast.info("실 결제 연동 모드입니다. 결제 승인 연동이 필요해요.");
+      }
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? `${kind === "charge" ? "충전" : "출금"} 실패`);
     }
   }
 
@@ -82,13 +113,13 @@ function ProfilePage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => toast.info("충전 기능을 준비 중이에요 🚀")}
+              onClick={() => requestPoint("charge")}
               className="inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition active:scale-95"
             >
               <Plus className="h-3 w-3" /> 충전
             </button>
             <button
-              onClick={() => toast.info("출금 기능을 준비 중이에요 🚀")}
+              onClick={() => requestPoint("withdraw")}
               className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition active:scale-95"
             >
               <ArrowDownToLine className="h-3 w-3" /> 출금
