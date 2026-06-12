@@ -178,7 +178,14 @@ export const getPhotoDetail = createServerFn({ method: "POST" })
     }
 
     return {
-      photo: { ...photo, preview_url: signedPreview?.signedUrl ?? null, uploader, original_url },
+      photo: {
+        ...photo,
+        preview_url: signedPreview?.signedUrl ?? null,
+        uploader,
+        original_url,
+        is_subject: photo.subject_id === context.userId,
+        is_uploader: photo.uploader_id === context.userId,
+      },
     };
   });
 

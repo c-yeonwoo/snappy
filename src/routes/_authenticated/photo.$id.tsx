@@ -30,8 +30,7 @@ function PhotoDetailPage() {
 
   if (isLoading || !data) return <p className="text-muted-foreground">불러오는 중…</p>;
   const p = data.photo;
-  const me = supabase.auth.getUser; // not used directly; we infer from data
-  const isSubject = p.subject_id === (supabase.auth as any)?.currentUser?.id || true; // server already gated; show all controls
+  const isSubject = p.is_subject;
 
   async function handleBuy() {
     setBusy(true);
@@ -88,7 +87,7 @@ function PhotoDetailPage() {
             <p className="text-2xl font-bold text-primary">${(p.price_cents / 100).toFixed(2)}</p>
           </div>
 
-          {p.status === "available" ? (
+          {p.status === "available" && isSubject ? (
             <div className="mt-6 flex gap-2">
               <Button className="flex-1" onClick={handleBuy} disabled={busy}>
                 {busy ? "처리 중…" : "구매하고 원본 받기"}
@@ -106,7 +105,7 @@ function PhotoDetailPage() {
                 </DialogContent>
               </Dialog>
             </div>
-          ) : p.status === "sold" ? (
+          ) : p.status === "sold" && isSubject ? (
             <div className="mt-6">
               {finalOriginalUrl ? (
                 <a href={finalOriginalUrl} download className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground">
@@ -116,7 +115,11 @@ function PhotoDetailPage() {
                 <p className="text-sm text-muted-foreground">구매 완료된 사진이에요.</p>
               )}
             </div>
-          ) : null}
+          ) : (
+            <p className="mt-6 text-sm text-muted-foreground">
+              {p.status === "sold" ? "이 사진은 판매 완료됐어요." : p.status === "removed" ? "삭제된 사진이에요." : "상대방의 응답을 기다리는 중이에요."}
+            </p>
+          )}
         </div>
       </div>
     </div>
