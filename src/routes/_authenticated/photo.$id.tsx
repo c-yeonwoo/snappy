@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Play, ShieldCheck, MessageCircle, Camera, BookmarkCheck } from "lucide-react";
-import { getMockPhoto, isPurchased, purchase, usePurchased, relativeTime } from "@/lib/mock-feed";
+import { getMockPhoto, isPurchased, purchase, usePurchased, relativeTime, formatWon } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
   head: () => ({ meta: [{ title: "사진 — Snappy" }] }),
@@ -129,7 +129,7 @@ function PhotoDetailPage() {
         <div className="mt-5 flex items-end justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">가격</p>
-            <p className="font-display text-3xl font-extrabold text-primary">${(p.price_cents / 100).toFixed(2)}</p>
+            <p className="font-display text-3xl font-extrabold text-primary">{formatWon(p.price_won)}</p>
           </div>
           {unlocked && (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
@@ -146,7 +146,7 @@ function PhotoDetailPage() {
             </Button>
           ) : (
             <Button className="h-12 w-full rounded-full text-base" onClick={handleBuy} disabled={busy}>
-              {busy ? "결제 중…" : `${(p.price_cents / 100).toFixed(2)}$ 결제하고 원본 받기`}
+              {busy ? "결제 중…" : `${formatWon(p.price_won)} 결제하고 원본 받기`}
             </Button>
           )}
           <p className="mt-2 text-center text-[11px] text-muted-foreground">결제 즉시 워터마크가 풀리고 다운로드할 수 있어요.</p>
