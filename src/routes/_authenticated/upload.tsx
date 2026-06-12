@@ -9,7 +9,7 @@ import { searchProfiles, createPhoto } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { watermarkImage, compressOriginal } from "@/lib/watermark";
 import { toast } from "sonner";
-import { Search, Upload, X, Film, Image as ImageIcon } from "lucide-react";
+import { Search, Upload, X, Film, Image as ImageIcon, Play } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({ meta: [{ title: "사진 보내기 — SnapBuddy" }] }),
