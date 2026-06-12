@@ -1,7 +1,7 @@
 // Client-side watermarking using Canvas.
-// Draws a tiled diagonal "Snappy" text plus a corner badge on top of the image.
-// Returns a JPEG Blob suitable for upload.
-export async function watermarkImage(file: File, label = "Snappy"): Promise<Blob> {
+// Densely tiles "Snappy" + the sender's handle across the whole image so
+// screenshots remain attributable.
+export async function watermarkImage(file: File, senderHandle?: string): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const maxDim = 1600;
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
@@ -13,32 +13,37 @@ export async function watermarkImage(file: File, label = "Snappy"): Promise<Blob
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, w, h);
 
-  // tiled diagonal text
+  const tag = senderHandle ? `Snappy · @${senderHandle}` : "Snappy";
+
+  // dense tiled diagonal text
   ctx.save();
   ctx.translate(w / 2, h / 2);
-  ctx.rotate(-Math.PI / 6);
-  ctx.font = `${Math.round(w * 0.06)}px sans-serif`;
+  ctx.rotate(-Math.PI / 7);
+  const fontSize = Math.round(w * 0.038);
+  ctx.font = `600 ${fontSize}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const step = w * 0.4;
-  for (let y = -h; y < h; y += step) {
-    for (let x = -w; x < w; x += step * 1.6) {
-      ctx.fillStyle = "rgba(255,255,255,0.32)";
-      ctx.fillText(label, x + 4, y + 4);
-      ctx.fillStyle = "rgba(0,0,0,0.35)";
-      ctx.fillText(label, x, y);
+  const stepY = fontSize * 2.6;
+  const stepX = Math.max(ctx.measureText(tag).width * 1.4, w * 0.32);
+  for (let y = -h; y < h; y += stepY) {
+    const offset = (Math.round(y / stepY) % 2) * (stepX / 2);
+    for (let x = -w + offset; x < w; x += stepX) {
+      ctx.fillStyle = "rgba(255,255,255,0.38)";
+      ctx.fillText(tag, x + 2, y + 2);
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+      ctx.fillText(tag, x, y);
     }
   }
   ctx.restore();
 
-  // corner badge
+  // bold corner badge
   const padding = Math.round(w * 0.02);
-  const badgeText = `PREVIEW • ${label}`;
-  ctx.font = `bold ${Math.round(w * 0.022)}px sans-serif`;
+  const badgeText = `PREVIEW · ${tag}`;
+  ctx.font = `bold ${Math.round(w * 0.024)}px sans-serif`;
   const metrics = ctx.measureText(badgeText);
   const badgeW = metrics.width + padding * 2;
-  const badgeH = Math.round(w * 0.04);
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  const badgeH = Math.round(w * 0.045);
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fillRect(padding, h - padding - badgeH, badgeW, badgeH);
   ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
