@@ -1,11 +1,14 @@
 import { createFileRoute, Outlet, redirect, Link, useLocation } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Inbox, ImagePlus, Images, User, Bell } from "lucide-react";
 import { getFriends, getMyFeed } from "@/lib/photos.functions";
 import { isNew } from "@/lib/format";
 import { Logo } from "@/components/logo";
+
+const NOTIF_SEEN_KEY = "snappy_notif_seen_at";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -23,9 +26,27 @@ function AuthedLayout() {
   const feedFn = useServerFn(getMyFeed);
   const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
   const { data: feedData } = useQuery({ queryKey: ["feed"], queryFn: () => feedFn() });
-  const notifCount =
-    (friendsData?.incoming?.length ?? 0) +
-    (feedData?.photos ?? []).filter((p) => p.status === "available" && isNew(p.created_at)).length;
+
+  // 알림 페이지 방문 시각 추적 — 방문 후엔 배지 제거
+  const [seenAt, setSeenAt] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem(NOTIF_SEEN_KEY) ?? "0", 10); } catch { return 0; }
+  });
+  const onNotifPage = loc.pathname === "/notifications";
+  useEffect(() => {
+    if (onNotifPage) {
+      const now = Date.now();
+      try { localStorage.setItem(NOTIF_SEEN_KEY, String(now)); } catch {}
+      setSeenAt(now);
+    }
+  }, [onNotifPage]);
+
+  // 친구 요청: pending 수 그대로 (수락/거절하면 자연히 0)
+  // 새 사진: seenAt 이후 도착한 것만 카운트
+  const pendingFriendReqs = friendsData?.incoming?.length ?? 0;
+  const newPhotos = (feedData?.photos ?? []).filter(
+    (p) => p.status === "available" && isNew(p.created_at) && new Date(p.created_at).getTime() > seenAt,
+  ).length;
+  const notifCount = pendingFriendReqs + newPhotos;
   const tabs = [
     { to: "/feed", icon: Inbox, label: "받은함" },
     { to: "/upload", icon: ImagePlus, label: "보내기" },

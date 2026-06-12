@@ -52,7 +52,7 @@ function NotificationsPage() {
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-secondary"><BellOff className="h-6 w-6 text-foreground" /></div>
           <h2 className="font-display mt-4 text-lg font-bold">새 알림이 없어요</h2>
-          <p className="mt-1 text-sm text-muted-foreground">친구 요청·새 사진·판매 소식이 여기로 모여요.</p>
+          <p className="mt-1 text-sm text-muted-foreground">친구 요청·새 사진·소장 소식이 여기로 모여요.</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -93,15 +93,15 @@ function NotificationsPage() {
             </section>
           )}
 
-          {/* 판매 소식 */}
+          {/* 소장 소식 */}
           {sold.length > 0 && (
             <section>
-              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">판매 소식</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">소장 소식</p>
               <ul className="space-y-2">
                 {sold.map((p) => (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 backdrop-blur">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Coins className="h-4 w-4" /></span>
-                    <p className="min-w-0 flex-1 text-sm"><b>@{p.subject?.handle ?? "?"}</b> 님이 내 사진을 구매했어요</p>
+                    <p className="min-w-0 flex-1 text-sm"><b>@{p.subject?.handle ?? "?"}</b> 님이 내 사진을 소장했어요</p>
                     <span className="shrink-0 text-xs font-bold text-foreground">+{formatWon(Math.round(p.price_won * 0.7))}</span>
                   </li>
                 ))}

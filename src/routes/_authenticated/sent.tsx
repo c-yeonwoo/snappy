@@ -1,22 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { getMySent } from "@/lib/photos.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getMySent, cancelPhotos } from "@/lib/photos.functions";
 import { formatWon } from "@/lib/format";
-import { useEffect, useState } from "react";
-import { Pencil, Check, X, Coins } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-// Frontend-only price overrides until backend exposes an update endpoint.
-const PRICE_KEY = "snappy.priceOverrides.v1";
-function readOverrides(): Record<string, number> {
-  if (typeof window === "undefined") return {};
-  try { return JSON.parse(localStorage.getItem(PRICE_KEY) || "{}"); } catch { return {}; }
-}
-function writeOverrides(map: Record<string, number>) {
-  localStorage.setItem(PRICE_KEY, JSON.stringify(map));
-  window.dispatchEvent(new Event("snappy:price"));
-}
+import { useState } from "react";
+import { Coins, Images } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/sent")({
   head: () => ({ meta: [{ title: "보낸 사진 — Snappy" }] }),
@@ -25,20 +14,42 @@ export const Route = createFileRoute("/_authenticated/sent")({
 
 function SentPage() {
   const fn = useServerFn(getMySent);
+  const cancelFn = useServerFn(cancelPhotos);
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["sent"], queryFn: () => fn() });
-  const [overrides, setOverrides] = useState<Record<string, number>>(() => readOverrides());
   const [tab, setTab] = useState<"sent" | "sales">("sent");
-  useEffect(() => {
-    const sync = () => setOverrides(readOverrides());
-    window.addEventListener("snappy:price", sync);
-    return () => window.removeEventListener("snappy:price", sync);
-  }, []);
 
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   const photos = data?.photos ?? [];
   const earningsWon = data?.earnings_won ?? 0;
   const sold = photos.filter((p) => p.status === "sold");
-  const priceOf = (p: { id: string; price_won: number }) => overrides[p.id] ?? p.price_won;
+
+  // 같은 batch_id 끼리 묶음 (batch_id 없으면 단건). 최신순 유지.
+  function group(items: typeof photos) {
+    const m = new Map<string, typeof photos>();
+    for (const p of items) {
+      const key = p.batch_id ?? `solo:${p.id}`;
+      const arr = m.get(key);
+      if (arr) arr.push(p);
+      else m.set(key, [p]);
+    }
+    return Array.from(m.values());
+  }
+  const groups = group(photos);
+
+  async function cancel(g: typeof photos) {
+    const ids = g.filter((p) => p.status === "available").map((p) => p.id);
+    if (ids.length === 0) return;
+    if (!window.confirm(`대기 중 ${ids.length}장을 취소할까요? 상대 받은함에서도 사라져요.`)) return;
+    try {
+      await cancelFn({ data: { ids } });
+      toast.success("전송을 취소했어요");
+      qc.invalidateQueries({ queryKey: ["sent"] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "취소 실패");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -46,7 +57,7 @@ function SentPage() {
         <div className="min-w-0">
           <span className="chip">보낸 사진</span>
           <h1 className="font-display mt-2 text-3xl font-extrabold">내가 보낸 컷</h1>
-          <p className="mt-1 text-sm text-muted-foreground">내가 찍어서 보낸 컷과 판매 현황.</p>
+          <p className="mt-1 text-sm text-muted-foreground">묶음으로 보낸 컷과 소장 현황.</p>
         </div>
         <div className="shrink-0 rounded-[1.25rem] bg-gradient-to-br from-foreground to-[oklch(0.35_0.06_260)] px-5 py-3 text-background shadow-lg">
           <p className="text-[10px] uppercase tracking-widest opacity-70">총 적립</p>
@@ -62,47 +73,42 @@ function SentPage() {
             onClick={() => setTab(t)}
             className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === t ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}
           >
-            {t === "sent" ? `보낸 사진 · ${photos.length}` : `판매 히스토리 · ${sold.length}`}
+            {t === "sent" ? `보낸 사진 · ${photos.length}` : `소장 내역 · ${sold.length}`}
           </button>
         ))}
       </div>
 
       {tab === "sent" ? (
-        photos.length === 0 ? (
+        groups.length === 0 ? (
           <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
             <p className="text-muted-foreground">아직 보낸 컷이 없어요.</p>
             <Link to="/upload" className="mt-3 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">보내러 가기</Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
-            {photos.map((p) => {
-              const statusMap = {
-                sold: { label: "판매", cls: "!bg-primary !text-primary-foreground !border-primary/40" },
-                removed: { label: "삭제", cls: "!bg-destructive !text-destructive-foreground !border-destructive/40" },
-                available: { label: "대기 중", cls: "" },
-              } as const;
-              const s = statusMap[p.status as keyof typeof statusMap] ?? statusMap.available;
-              const currentPrice = priceOf(p);
-              const editable = p.status !== "sold" && p.status !== "removed";
-              return (
-                <div key={p.id} className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-card shadow-[0_15px_40px_-20px_rgba(10,10,10,0.15)]">
+            {groups.map((g) => {
+              const cover = g[0];
+              const count = g.length;
+              const inner = (
+                <>
                   <div className="relative aspect-square bg-secondary">
-                    {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
-                    <span className={`absolute left-2.5 top-2.5 chip ${s.cls}`}>{s.label}</span>
-                    <PriceBadge
-                      price={currentPrice}
-                      editable={editable}
-                      onSave={(v) => {
-                        const next = { ...readOverrides(), [p.id]: v };
-                        writeOverrides(next);
-                      }}
-                    />
+                    {cover.preview_url && <img src={cover.preview_url} alt="" className="h-full w-full object-cover" />}
+                    {count > 1 && (
+                      <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-0.5 rounded-full bg-foreground/85 px-2 py-0.5 text-[10px] font-bold text-background">
+                        <Images className="h-3 w-3" />{count}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between p-3 text-xs">
-                    <span className="text-muted-foreground">to <b className="text-foreground">@{p.subject?.handle ?? "?"}</b></span>
-                    {p.status === "sold" && <span className="font-semibold text-foreground">+{formatWon(Math.round(currentPrice * 0.7))}</span>}
+                  <div className="p-3 text-xs">
+                    <span className="truncate text-muted-foreground">to <b className="text-foreground">@{cover.subject?.handle ?? "?"}</b></span>
                   </div>
-                </div>
+                </>
+              );
+              const cls = "block overflow-hidden rounded-[1.5rem] border border-white/70 bg-card shadow-[0_15px_40px_-20px_rgba(10,10,10,0.15)]";
+              // batch_id가 없는 구형 단건도 photo.id를 파라미터로 상세 이동 (getSentBatch가 fallback 처리)
+              const linkId = cover.batch_id ?? cover.id;
+              return (
+                <Link key={linkId} to="/sent/$id" params={{ id: linkId }} className={`${cls} transition active:scale-[0.99]`}>{inner}</Link>
               );
             })}
           </div>
@@ -110,57 +116,25 @@ function SentPage() {
       ) : sold.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-secondary"><Coins className="h-6 w-6 text-foreground" /></div>
-          <h2 className="font-display mt-4 text-lg font-bold">아직 판매가 없어요</h2>
-          <p className="mt-1 text-sm text-muted-foreground">친구가 내 컷을 결제하면 여기에 기록돼요.</p>
+          <h2 className="font-display mt-4 text-lg font-bold">아직 소장된 컷이 없어요</h2>
+          <p className="mt-1 text-sm text-muted-foreground">친구가 내 컷을 소장하면 여기에 기록돼요.</p>
         </div>
       ) : (
         <ul className="space-y-2">
-          {sold.map((p) => {
-            const earning = Math.round(priceOf(p) * 0.7);
-            return (
-              <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 p-2.5 backdrop-blur">
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
-                  {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold"><b>@{p.subject?.handle ?? "?"}</b> 님이 구매</p>
-                  <p className="text-[11px] text-muted-foreground">판매가 {formatWon(priceOf(p))}</p>
-                </div>
-                <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatWon(earning)}</span>
-              </li>
-            );
-          })}
+          {sold.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 p-2.5 backdrop-blur">
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold"><b>@{p.subject?.handle ?? "?"}</b> 님이 소장</p>
+                <p className="text-[11px] text-muted-foreground">가격 {formatWon(p.price_won)}</p>
+              </div>
+              <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatWon(Math.round(p.price_won * 0.7))}</span>
+            </li>
+          ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-function PriceBadge({ price, editable, onSave }: { price: number; editable: boolean; onSave: (v: number) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(price);
-  useEffect(() => setVal(price), [price]);
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        disabled={!editable}
-        onClick={() => setEditing(true)}
-        className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-bold text-background disabled:opacity-80"
-      >
-        {formatWon(price)}
-        {editable && <Pencil className="h-2.5 w-2.5 opacity-80" />}
-      </button>
-    );
-  }
-  return (
-    <div className="absolute inset-x-2 top-2 flex items-center gap-1 rounded-full bg-foreground/95 px-1.5 py-1 text-background">
-      <Button type="button" variant="ghost" size="sm" className="h-6 rounded-full px-2 text-background hover:bg-white/15" onClick={() => setVal(Math.max(1000, val - 500))}>−</Button>
-      <span className="font-display flex-1 text-center text-[12px] font-extrabold">{formatWon(val)}</span>
-      <Button type="button" variant="ghost" size="sm" className="h-6 rounded-full px-2 text-background hover:bg-white/15" onClick={() => setVal(Math.min(50000, val + 500))}>+</Button>
-      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full text-background hover:bg-white/15" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
-      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { onSave(val); setEditing(false); }}><Check className="h-3 w-3" /></Button>
     </div>
   );
 }

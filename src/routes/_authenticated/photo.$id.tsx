@@ -72,9 +72,9 @@ function PhotoDetailPage() {
       setBoughtUrl(res.original_url);
       qc.invalidateQueries({ queryKey: ["photo", id] });
       qc.invalidateQueries({ queryKey: ["feed"] });
-      toast.success("결제 완료! 워터마크가 풀렸어요.");
+      toast.success("소장 완료! 워터마크가 풀렸어요.");
     } catch (e: any) {
-      toast.error(e?.message ?? "결제 실패");
+      toast.error(e?.message ?? "소장에 실패했어요");
     } finally {
       setBusy(false);
     }
@@ -143,8 +143,8 @@ function PhotoDetailPage() {
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div className="absolute inset-[-30%] grid grid-cols-3 gap-y-10 rotate-[-18deg] place-items-center">
                 {Array.from({ length: 36 }).map((_, i) => (
-                  <span key={i} className="text-[13px] font-extrabold tracking-[0.25em] text-white/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
-                    SNAPPY · @{p.uploader?.handle ?? "snappy"}
+                  <span key={i} className="text-[12px] font-bold tracking-[0.25em] text-white/30 [text-shadow:0_1px_2px_rgba(0,0,0,0.25)]">
+                    SNAPPY
                   </span>
                 ))}
               </div>
@@ -203,15 +203,15 @@ function PhotoDetailPage() {
             </Button>
           ) : canBuy ? (
             <Button className="h-12 w-full rounded-full text-base" onClick={handleBuy} disabled={busy}>
-              {busy ? "결제 중…" : `${formatWon(p.price_won)} 결제하고 원본 받기`}
+              {busy ? "받는 중…" : `${formatWon(p.price_won)}으로 소장하고 원본 받기`}
             </Button>
           ) : (
             <p className="rounded-full bg-secondary py-3 text-center text-sm font-semibold text-muted-foreground">
-              {p.is_uploader ? "내가 보낸 컷이에요" : "받는 사람만 결제할 수 있어요"}
+              {p.is_uploader ? "내가 보낸 컷이에요" : "받는 사람만 소장할 수 있어요"}
             </p>
           )}
           {canBuy && (
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">결제 즉시 워터마크가 풀리고 다운로드할 수 있어요.</p>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">소장하면 워터마크가 풀리고 다운로드할 수 있어요.</p>
           )}
         </div>
       </div>
@@ -246,6 +246,28 @@ function PhotoDetailPage() {
               <span className="text-border">|</span>
               <button onClick={() => setReporting(true)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
                 <Flag className="h-3 w-3" /> 신고
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 소장한 컷 — 보관함에서 삭제 */}
+      {p.is_subject && p.status === "sold" && (
+        <div className="mt-4">
+          {confirmDelete ? (
+            <div className="rounded-[1.5rem] border border-border bg-card/80 p-4 text-left">
+              <p className="text-sm font-bold">보관함에서 삭제</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">보관함에서 사라져요. (이미 받은 원본 파일은 기기에 남아요)</p>
+              <div className="mt-3 flex gap-2">
+                <Button variant="ghost" className="flex-1 rounded-full" onClick={() => setConfirmDelete(false)}>취소</Button>
+                <Button variant="destructive" className="flex-1 rounded-full" onClick={handleRemove} disabled={busy}>삭제</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center text-xs font-semibold text-muted-foreground">
+              <button onClick={() => setConfirmDelete(true)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
+                <Trash2 className="h-3 w-3" /> 보관함에서 삭제
               </button>
             </div>
           )}
