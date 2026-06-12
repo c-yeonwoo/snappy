@@ -96,7 +96,9 @@ function FeedPage() {
                     </span>
                   )}
                   {fresh && (
-                    <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-accent ring-2 ring-white/80" />
+                    <span className="absolute left-3 top-3 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold tracking-wide text-accent-foreground shadow-sm">
+                      NEW
+                    </span>
                   )}
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/65 via-black/30 to-transparent px-2.5 py-2">
                     <span className="truncate text-[11px] font-semibold text-white">@{p.uploader.handle}</span>
