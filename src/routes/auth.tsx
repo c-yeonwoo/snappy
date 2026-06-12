@@ -50,7 +50,7 @@ function AuthPage() {
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-sky blur-3xl opacity-60" />
       <div aria-hidden className="pointer-events-none absolute bottom-0 -left-20 h-80 w-80 rounded-full bg-accent/50 blur-3xl opacity-60" />
-      <header className="relative mx-auto w-full max-w-6xl px-5 py-5">
+      <header className="relative mx-auto w-full max-w-6xl px-4 py-5">
         <Link to="/" className="flex items-center gap-2 font-display font-bold">
           <span className="grid h-8 w-8 place-items-center rounded-2xl bg-foreground text-background">
             <Camera className="h-4 w-4" />
@@ -58,7 +58,7 @@ function AuthPage() {
           Snappy
         </Link>
       </header>
-      <main className="relative flex flex-1 items-center justify-center px-5 pb-16">
+      <main className="relative flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-md rounded-[1.75rem] border border-white/60 bg-card/90 p-7 shadow-[0_30px_80px_-30px_rgba(125,160,200,0.45)] backdrop-blur">
           <span className="chip">어서와요</span>
           <h1 className="font-display mt-3 text-3xl font-extrabold">시작해볼까요?</h1>
