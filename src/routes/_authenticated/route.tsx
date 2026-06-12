@@ -57,7 +57,7 @@ function AuthedLayout() {
   return (
     <div className="min-h-screen pb-24">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-md items-center justify-between px-[18px] py-3">
           <Link to="/feed">
             <Logo />
           </Link>
@@ -71,7 +71,7 @@ function AuthedLayout() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-md px-4 py-6"><Outlet /></main>
+      <main className="mx-auto max-w-md px-[18px] py-6"><Outlet /></main>
       {/* bottom tab bar (mobile-only nav) */}
       <nav className="fixed inset-x-0 bottom-3 z-30 mx-auto flex max-w-xs items-center justify-around gap-1 rounded-full border border-white/70 bg-card/90 px-2 py-1.5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.18)] backdrop-blur-xl">
         {tabs.map((t) => (

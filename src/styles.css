@@ -7,7 +7,7 @@
 /*
  * Snappy — Electric Lime
  * Palette: #0a0a0a / #fafafa / #d9f99d / #a3e635
- * Fonts: Outfit (display) + Figtree (body)
+ * Fonts: Clash Display (logo/display) + Pretendard Variable (KR+EN body)
  */
 
 @theme inline {
@@ -18,8 +18,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Clash Display", "Pretendard Variable", "Pretendard", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Pretendard Variable", "Pretendard", ui-sans-serif, system-ui, sans-serif;
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
   --color-brand-deep: var(--brand-deep);
@@ -164,20 +164,18 @@
     font-family: var(--font-display);
     letter-spacing: -0.015em;
     line-height: 1.2;
-    font-weight: 700;
+    font-weight: 800;
   }
   h1 { font-size: 1.6rem; }
   h2 { font-size: 1.3rem; }
   h3 { font-size: 1.1rem; }
   h4 { font-size: 1rem; }
-
-  /* tone down extreme weights used throughout the app */
-  .font-extrabold { font-weight: 700 !important; }
 }
 
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  font-weight: 700;
 }
 
 @utility chip {

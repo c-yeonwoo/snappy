@@ -13,11 +13,11 @@ export function Logo({
   badgeClassName?: string;
 }) {
   return (
-    <span className={`flex items-center gap-2 font-display font-bold ${className}`}>
+    <span className={`flex items-center gap-2 font-display ${className}`}>
       <span className={`grid place-items-center rounded-2xl bg-foreground text-background ${badgeClassName}`}>
         <Camera className="h-4 w-4" />
       </span>
-      Snappy
+      <span className="text-[1.1em]">Snappy</span>
     </span>
   );
 }

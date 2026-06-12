@@ -75,7 +75,7 @@ function SentPage() {
               {soldTotal}
               <span className="text-sm font-semibold text-muted-foreground">건</span>
               {sentTotal > 0 && (
-                <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                <span className="text-sm font-semibold text-primary">
                   {Math.round(soldTotal / sentTotal * 100)}%
                 </span>
               )}
@@ -150,7 +150,7 @@ function SentPage() {
             const statusMap: Record<string, { label: string; cls: string }> = {
               sold:     { label: "소장됨", cls: "!bg-primary/15 !text-primary !border-primary/30" },
               removed:  { label: "반려됨", cls: "!bg-muted !text-muted-foreground !border-border" },
-              reported: { label: "신고됨", cls: "!bg-destructive/10 !text-destructive !border-destructive/20" },
+              reported: { label: "신고됨", cls: "!bg-destructive/25 !text-destructive !border-destructive/50" },
             };
             const statusConfig = statusMap[p.status] ?? { label: p.status, cls: "" };
             return (

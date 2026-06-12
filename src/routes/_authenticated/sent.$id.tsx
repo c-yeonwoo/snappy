@@ -144,7 +144,7 @@ function SentBatchPage() {
               <span className={`absolute left-2 top-2 chip text-[9px] ${
                 p.status === "sold" ? "!bg-primary !text-primary-foreground !border-primary/40"
                 : p.status === "removed" ? "!bg-muted !text-muted-foreground !border-border"
-                : p.status === "reported" ? "!bg-destructive/15 !text-destructive !border-destructive/30"
+                : p.status === "reported" ? "!bg-destructive/25 !text-destructive !border-destructive/50"
                 : ""
               }`}>
                 {{ available: "대기중", sold: "소장됨", removed: "반려됨", reported: "신고됨" }[p.status] ?? "대기중"}
