@@ -20,6 +20,16 @@
   - `GET /friends/pending` — 받은 요청
 - 알림(추후): 친구 요청 푸시
 
+## 1-b. 보낸 사진 가격 수정
+
+현재 프론트는 `localStorage`(`snappy.priceOverrides.v1`)에 가격 override만 저장.
+
+- API
+  - `PATCH /photos/{id} {priceCents}` — 본인이 보낸, 아직 미판매(`available`) 컷에 한해 수정 허용
+  - 판매 완료(`sold`) / 삭제(`removed`) 상태는 거절
+- 검증: 가격 범위(1,000~50,000원), 작성자 본인(`uploader_id == auth.uid`)
+- 응답으로 갱신된 가격 반환, 클라이언트는 캐시 무효화
+
 ## 2. AirDrop-식 임시 받기 창 (Allow Window)
 
 현재 프론트는 `localStorage`에 `expiresAt` 저장만.
