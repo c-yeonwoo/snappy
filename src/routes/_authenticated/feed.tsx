@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMyFeed } from "@/lib/photos.functions";
-import { ImageOff, Play, Sparkles, Send, Search } from "lucide-react";
+import { ImageOff, Play, Inbox, Send, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({ meta: [{ title: "내 피드 — Snappy" }] }),
@@ -25,10 +25,11 @@ function FeedPage() {
     <div>
       <header className="mb-6 flex items-end justify-between gap-3">
         <div>
-          <span className="chip"><Sparkles className="h-3.5 w-3.5" /> 오늘 도착한 컷</span>
-          <h1 className="font-display mt-2 text-3xl font-extrabold">내 피드</h1>
+          <span className="chip"><Inbox className="h-3.5 w-3.5" /> 나에게 도착한 컷</span>
+          <h1 className="font-display mt-2 text-3xl font-extrabold">받은함</h1>
+          <p className="mt-1 text-xs text-muted-foreground">친구들이 보낸 사진과 영상을 모아봐요.</p>
         </div>
-        <p className="text-xs text-muted-foreground">{photos.length}개</p>
+        <p className="shrink-0 text-xs text-muted-foreground">{photos.length}개</p>
       </header>
 
       {/* Quick send shortcut */}
