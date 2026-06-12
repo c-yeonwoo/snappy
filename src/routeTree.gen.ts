@@ -19,6 +19,7 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticated/friends'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
+import { Route as AuthenticatedSentIndexRouteImport } from './routes/_authenticated/sent.index'
 import { Route as AuthenticatedSentIdRouteImport } from './routes/_authenticated/sent.$id'
 import { Route as AuthenticatedPhotoIdRouteImport } from './routes/_authenticated/photo.$id'
 import { Route as AuthenticatedBatchIdRouteImport } from './routes/_authenticated/batch.$id'
@@ -73,6 +74,11 @@ const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
   path: '/feed',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSentIndexRoute = AuthenticatedSentIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedSentRoute,
+} as any)
 const AuthenticatedSentIdRoute = AuthenticatedSentIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/sent/$id': typeof AuthenticatedSentIdRoute
+  '/sent/': typeof AuthenticatedSentIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,12 +117,12 @@ export interface FileRoutesByTo {
   '/friends': typeof AuthenticatedFriendsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/sent': typeof AuthenticatedSentRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/sent/$id': typeof AuthenticatedSentIdRoute
+  '/sent': typeof AuthenticatedSentIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -132,6 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/batch/$id': typeof AuthenticatedBatchIdRoute
   '/_authenticated/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/_authenticated/sent/$id': typeof AuthenticatedSentIdRoute
+  '/_authenticated/sent/': typeof AuthenticatedSentIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -148,6 +156,7 @@ export interface FileRouteTypes {
     | '/batch/$id'
     | '/photo/$id'
     | '/sent/$id'
+    | '/sent/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,12 +165,12 @@ export interface FileRouteTypes {
     | '/friends'
     | '/notifications'
     | '/profile'
-    | '/sent'
     | '/settings'
     | '/upload'
     | '/batch/$id'
     | '/photo/$id'
     | '/sent/$id'
+    | '/sent'
   id:
     | '__root__'
     | '/'
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/_authenticated/batch/$id'
     | '/_authenticated/photo/$id'
     | '/_authenticated/sent/$id'
+    | '/_authenticated/sent/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -257,6 +267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFeedRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sent/': {
+      id: '/_authenticated/sent/'
+      path: '/'
+      fullPath: '/sent/'
+      preLoaderRoute: typeof AuthenticatedSentIndexRouteImport
+      parentRoute: typeof AuthenticatedSentRoute
+    }
     '/_authenticated/sent/$id': {
       id: '/_authenticated/sent/$id'
       path: '/$id'
@@ -283,10 +300,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedSentRouteChildren {
   AuthenticatedSentIdRoute: typeof AuthenticatedSentIdRoute
+  AuthenticatedSentIndexRoute: typeof AuthenticatedSentIndexRoute
 }
 
 const AuthenticatedSentRouteChildren: AuthenticatedSentRouteChildren = {
   AuthenticatedSentIdRoute: AuthenticatedSentIdRoute,
+  AuthenticatedSentIndexRoute: AuthenticatedSentIndexRoute,
 }
 
 const AuthenticatedSentRouteWithChildren =
