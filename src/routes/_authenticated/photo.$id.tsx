@@ -95,7 +95,7 @@ function PhotoDetailPage() {
           {p.status === "available" && isSubject ? (
             <div className="mt-6 flex gap-2">
               <Button className="h-12 flex-1 rounded-full text-base" onClick={handleBuy} disabled={busy}>
-                {busy ? "처리 중…" : "✨ 결제하고 원본 받기"}
+                {busy ? "처리 중…" : "결제하고 원본 받기"}
               </Button>
               <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" onClick={handleRemove} title="삭제"><Trash2 className="h-4 w-4" /></Button>
               <Dialog>

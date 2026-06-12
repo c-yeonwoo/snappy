@@ -38,7 +38,7 @@ function Index() {
         </Link>
         <nav className="flex items-center gap-2">
           <Link to="/auth"><Button variant="ghost" size="sm" className="rounded-full">로그인</Button></Link>
-          <Link to="/auth"><Button size="sm" className="rounded-full px-4">시작 ✨</Button></Link>
+          <Link to="/auth"><Button size="sm" className="rounded-full px-4">시작</Button></Link>
         </nav>
       </header>
 
@@ -103,11 +103,11 @@ function Index() {
         </section>
 
         <div className="mt-7 flex flex-col gap-2">
-          <Link to="/auth"><Button size="lg" className="w-full rounded-full">무료로 시작 ✨</Button></Link>
+          <Link to="/auth"><Button size="lg" className="w-full rounded-full">무료로 시작</Button></Link>
           <Link to="/auth"><Button size="lg" variant="outline" className="w-full rounded-full bg-card">로그인</Button></Link>
         </div>
 
-        <footer className="mt-10 text-center text-xs text-muted-foreground">made with ☁️ by snappy</footer>
+        <footer className="mt-10 text-center text-xs text-muted-foreground">made by snappy</footer>
       </main>
     </div>
   );

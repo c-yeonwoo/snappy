@@ -50,7 +50,7 @@ function FeedPage() {
             <ImageOff className="h-6 w-6 text-foreground" />
           </div>
           <h2 className="font-display mt-4 text-lg font-bold">아직 받은 컷이 없어요</h2>
-          <p className="mt-1 text-sm text-muted-foreground">친구가 보내면 여기에 톡 도착해요 📬</p>
+          <p className="mt-1 text-sm text-muted-foreground">친구가 보내면 여기로 도착해요.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
@@ -79,7 +79,7 @@ function FeedPage() {
                     ${(p.price_cents / 100).toFixed(2)}
                   </div>
                   {p.status === "sold" && (
-                    <div className="absolute bottom-2.5 left-2.5 chip !bg-primary !text-primary-foreground !border-primary/40">완료 ✓</div>
+                    <div className="absolute bottom-2.5 left-2.5 chip !bg-primary !text-primary-foreground !border-primary/40">완료</div>
                   )}
                 </div>
               </Link>
