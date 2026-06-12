@@ -174,3 +174,29 @@
   color: var(--color-secondary-foreground);
   border: 1px solid color-mix(in oklab, var(--color-accent) 30%, transparent);
 }
+
+/* Best-effort screenshot/save deterrent.
+ * Real screenshot blocking requires a native app (FLAG_SECURE on Android,
+ * screen-recording APIs on iOS). On web we can only discourage:
+ *  - disable selection, drag-save, long-press save sheet, context menu
+ *  - hide content while the tab is backgrounded (defeats some recorders)
+ */
+@utility no-capture {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  pointer-events: auto;
+}
+
+.no-capture img,
+.no-capture video {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+body:not(:focus-within) .no-capture-hide,
+body.is-hidden .no-capture-hide {
+  filter: blur(28px);
+}
