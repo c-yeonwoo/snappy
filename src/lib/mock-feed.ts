@@ -11,7 +11,7 @@ export type MockPhoto = {
   preview_url: string;
   original_url: string; // unwatermarked preview used after "purchase"
   is_video: boolean;
-  price_cents: number;
+  price_won: number;
   note?: string;
   received_at: string; // ISO
   tone: string; // gradient classes for placeholder
@@ -21,19 +21,23 @@ export type MockPhoto = {
 const img = (seed: string, w = 600, h = 750) => `https://picsum.photos/seed/${seed}/${w}/${h}`;
 
 export const MOCK_PHOTOS: MockPhoto[] = [
-  { id: "p01", uploader: { handle: "yuna",   display_name: "유나" }, preview_url: img("snappy-yuna"),   original_url: img("snappy-yuna",1200,1500),   is_video: false, price_cents: 300, note: "한강에서 한 컷!",            received_at: "2026-06-12T09:10:00Z", tone: "from-sky-soft to-sky" },
-  { id: "p02", uploader: { handle: "minho",  display_name: "민호" }, preview_url: img("snappy-minho"),  original_url: img("snappy-minho",1200,1500),  is_video: true,  price_cents: 500, note: "점프샷 영상이야",            received_at: "2026-06-12T08:42:00Z", tone: "from-sky to-accent" },
-  { id: "p03", uploader: { handle: "jiwoo",  display_name: "지우" }, preview_url: img("snappy-jiwoo"),  original_url: img("snappy-jiwoo",1200,1500),  is_video: false, price_cents: 400,                                    received_at: "2026-06-12T07:21:00Z", tone: "from-accent/70 to-sky-deep/40" },
-  { id: "p04", uploader: { handle: "sora",   display_name: "소라" }, preview_url: img("snappy-sora"),   original_url: img("snappy-sora",1200,1500),   is_video: false, price_cents: 300, note: "이거 진짜 잘나왔다 ㅎㅎ",     received_at: "2026-06-11T22:05:00Z", tone: "from-accent/60 to-sky" },
-  { id: "p05", uploader: { handle: "dan",    display_name: "단" },   preview_url: img("snappy-dan"),    original_url: img("snappy-dan",1200,1500),    is_video: true,  price_cents: 600,                                    received_at: "2026-06-11T19:34:00Z", tone: "from-sky-deep/40 to-sky" },
-  { id: "p06", uploader: { handle: "hye",    display_name: "혜진" }, preview_url: img("snappy-hye"),    original_url: img("snappy-hye",1200,1500),    is_video: false, price_cents: 400,                                    received_at: "2026-06-11T13:10:00Z", tone: "from-sky-soft to-sky-deep/30" },
-  { id: "p07", uploader: { handle: "junho",  display_name: "준호" }, preview_url: img("snappy-junho"),  original_url: img("snappy-junho",1200,1500),  is_video: false, price_cents: 300, note: "노을 진짜 미쳤지",            received_at: "2026-06-10T18:55:00Z", tone: "from-sky to-sky-deep/40" },
-  { id: "p08", uploader: { handle: "mira",   display_name: "미라" }, preview_url: img("snappy-mira"),   original_url: img("snappy-mira",1200,1500),   is_video: false, price_cents: 500,                                    received_at: "2026-06-10T15:01:00Z", tone: "from-sky-soft to-accent/60" },
-  { id: "p09", uploader: { handle: "rae",    display_name: "래" },   preview_url: img("snappy-rae"),    original_url: img("snappy-rae",1200,1500),    is_video: true,  price_cents: 700, note: "걸어가는 거 찍어봤어",        received_at: "2026-06-10T11:20:00Z", tone: "from-accent to-sky" },
-  { id: "p10", uploader: { handle: "siwon",  display_name: "시원" }, preview_url: img("snappy-siwon"),  original_url: img("snappy-siwon",1200,1500),  is_video: false, price_cents: 300,                                    received_at: "2026-06-09T20:00:00Z", tone: "from-sky to-sky-soft" },
-  { id: "p11", uploader: { handle: "bom",    display_name: "봄" },   preview_url: img("snappy-bom"),    original_url: img("snappy-bom",1200,1500),    is_video: false, price_cents: 400, note: "벚꽃 마지막 컷",              received_at: "2026-06-09T14:42:00Z", tone: "from-sky-soft to-accent" },
-  { id: "p12", uploader: { handle: "tae",    display_name: "태" },   preview_url: img("snappy-tae"),    original_url: img("snappy-tae",1200,1500),    is_video: false, price_cents: 500,                                    received_at: "2026-06-08T09:18:00Z", tone: "from-sky-deep/50 to-accent/60" },
+  { id: "p01", uploader: { handle: "yuna",   display_name: "유나" }, preview_url: img("snappy-yuna"),   original_url: img("snappy-yuna",1200,1500),   is_video: false, price_won: 3000, note: "한강에서 한 컷!",        received_at: "2026-06-12T09:10:00Z", tone: "from-sky-soft to-sky" },
+  { id: "p02", uploader: { handle: "minho",  display_name: "민호" }, preview_url: img("snappy-minho"),  original_url: img("snappy-minho",1200,1500),  is_video: true,  price_won: 5000, note: "점프샷 영상이야",        received_at: "2026-06-12T08:42:00Z", tone: "from-sky to-accent" },
+  { id: "p03", uploader: { handle: "jiwoo",  display_name: "지우" }, preview_url: img("snappy-jiwoo"),  original_url: img("snappy-jiwoo",1200,1500),  is_video: false, price_won: 4000,                                received_at: "2026-06-12T07:21:00Z", tone: "from-accent/70 to-sky-deep/40" },
+  { id: "p04", uploader: { handle: "sora",   display_name: "소라" }, preview_url: img("snappy-sora"),   original_url: img("snappy-sora",1200,1500),   is_video: false, price_won: 3500, note: "이거 진짜 잘나왔다 ㅎㅎ", received_at: "2026-06-11T22:05:00Z", tone: "from-accent/60 to-sky" },
+  { id: "p05", uploader: { handle: "dan",    display_name: "단" },   preview_url: img("snappy-dan"),    original_url: img("snappy-dan",1200,1500),    is_video: true,  price_won: 6000,                                received_at: "2026-06-11T19:34:00Z", tone: "from-sky-deep/40 to-sky" },
+  { id: "p06", uploader: { handle: "hye",    display_name: "혜진" }, preview_url: img("snappy-hye"),    original_url: img("snappy-hye",1200,1500),    is_video: false, price_won: 4000,                                received_at: "2026-06-11T13:10:00Z", tone: "from-sky-soft to-sky-deep/30" },
+  { id: "p07", uploader: { handle: "junho",  display_name: "준호" }, preview_url: img("snappy-junho"),  original_url: img("snappy-junho",1200,1500),  is_video: false, price_won: 3000, note: "노을 진짜 미쳤지",       received_at: "2026-06-10T18:55:00Z", tone: "from-sky to-sky-deep/40" },
+  { id: "p08", uploader: { handle: "mira",   display_name: "미라" }, preview_url: img("snappy-mira"),   original_url: img("snappy-mira",1200,1500),   is_video: false, price_won: 5000,                                received_at: "2026-06-10T15:01:00Z", tone: "from-sky-soft to-accent/60" },
+  { id: "p09", uploader: { handle: "rae",    display_name: "래" },   preview_url: img("snappy-rae"),    original_url: img("snappy-rae",1200,1500),    is_video: true,  price_won: 7000, note: "걸어가는 거 찍어봤어",   received_at: "2026-06-10T11:20:00Z", tone: "from-accent to-sky" },
+  { id: "p10", uploader: { handle: "siwon",  display_name: "시원" }, preview_url: img("snappy-siwon"),  original_url: img("snappy-siwon",1200,1500),  is_video: false, price_won: 3000,                                received_at: "2026-06-09T20:00:00Z", tone: "from-sky to-sky-soft" },
+  { id: "p11", uploader: { handle: "bom",    display_name: "봄" },   preview_url: img("snappy-bom"),    original_url: img("snappy-bom",1200,1500),    is_video: false, price_won: 4500, note: "벚꽃 마지막 컷",         received_at: "2026-06-09T14:42:00Z", tone: "from-sky-soft to-accent" },
+  { id: "p12", uploader: { handle: "tae",    display_name: "태" },   preview_url: img("snappy-tae"),    original_url: img("snappy-tae",1200,1500),    is_video: false, price_won: 5000,                                received_at: "2026-06-08T09:18:00Z", tone: "from-sky-deep/50 to-accent/60" },
 ];
+
+export function formatWon(won: number) {
+  return `${won.toLocaleString("ko-KR")}원`;
+}
 
 // ----------------- purchased store (localStorage) -----------------
 const listeners = new Set<() => void>();
