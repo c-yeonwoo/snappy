@@ -1,36 +1,46 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { getMyFeed } from "@/lib/photos.functions";
-import { ImageOff, Play, Inbox, Send, Search } from "lucide-react";
+import { useState } from "react";
+import { ImageOff, Play, Inbox, Send, Search, BookmarkCheck, Lock } from "lucide-react";
+import { MOCK_PHOTOS, usePurchased, isNew, relativeTime } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/feed")({
-  head: () => ({ meta: [{ title: "내 피드 — Snappy" }] }),
+  head: () => ({ meta: [{ title: "받은함 — Snappy" }] }),
   component: FeedPage,
 });
 
-function isVideo(url?: string | null) {
-  if (!url) return false;
-  return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
-}
-
 function FeedPage() {
-  const fetchFeed = useServerFn(getMyFeed);
-  const { data, isLoading } = useQuery({ queryKey: ["feed"], queryFn: () => fetchFeed() });
+  const purchased = usePurchased();
+  const [tab, setTab] = useState<"new" | "saved">("new");
 
-  if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
-  const photos = data?.photos ?? [];
+  const newOnes = MOCK_PHOTOS.filter((p) => isNew(p, purchased));
+  const saved = MOCK_PHOTOS.filter((p) => purchased.has(p.id));
+  const photos = tab === "new" ? newOnes : saved;
 
   return (
     <div>
-      <header className="mb-6 flex items-end justify-between gap-3">
+      <header className="mb-5 flex items-end justify-between gap-3">
         <div>
-          <span className="chip"><Inbox className="h-3.5 w-3.5" /> 나에게 도착한 컷</span>
-          <h1 className="font-display mt-2 text-3xl font-extrabold">받은함</h1>
-          <p className="mt-1 text-xs text-muted-foreground">친구들이 보낸 사진과 영상을 모아봐요.</p>
+          <span className="chip"><Inbox className="h-3.5 w-3.5" /> 내 피드</span>
+          <h1 className="font-display mt-2 text-3xl font-extrabold">{tab === "new" ? "받은함" : "보관함"}</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {tab === "new" ? "최근 24시간 안에 새로 받은 컷이에요." : "구매해서 원본으로 보관 중인 컷."}
+          </p>
         </div>
         <p className="shrink-0 text-xs text-muted-foreground">{photos.length}개</p>
       </header>
+
+      {/* Tabs */}
+      <div className="mb-4 inline-flex w-full rounded-full border border-border bg-card/80 p-1 backdrop-blur">
+        {(["new", "saved"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === t ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}
+          >
+            {t === "new" ? `받은함 · ${newOnes.length}` : `보관함 · ${saved.length}`}
+          </button>
+        ))}
+      </div>
 
       {/* Quick send shortcut */}
       <Link
@@ -48,40 +58,47 @@ function FeedPage() {
       {photos.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-soft">
-            <ImageOff className="h-6 w-6 text-foreground" />
+            {tab === "new" ? <ImageOff className="h-6 w-6 text-foreground" /> : <BookmarkCheck className="h-6 w-6 text-foreground" />}
           </div>
-          <h2 className="font-display mt-4 text-lg font-bold">아직 받은 컷이 없어요</h2>
-          <p className="mt-1 text-sm text-muted-foreground">친구가 보내면 여기로 도착해요.</p>
+          <h2 className="font-display mt-4 text-lg font-bold">{tab === "new" ? "새 컷이 없어요" : "보관한 컷이 없어요"}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{tab === "new" ? "친구가 보내면 여기로 도착해요." : "마음에 든 컷을 결제하면 모여요."}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
           {photos.map((p) => {
-            const video = isVideo(p.preview_url);
+            const owned = purchased.has(p.id);
             return (
               <Link
                 key={p.id}
                 to="/photo/$id"
                 params={{ id: p.id }}
-                className="group relative block overflow-hidden rounded-[1.5rem] border border-white/70 bg-card shadow-[0_15px_40px_-20px_rgba(125,160,200,0.4)] transition hover:-translate-y-0.5 hover:shadow-[0_25px_50px_-20px_rgba(125,160,200,0.55)]"
+                className="group relative block overflow-hidden rounded-md bg-secondary"
               >
-                <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
-                  {p.preview_url ? (
-                    video ? (
-                      <video src={p.preview_url} muted playsInline className="h-full w-full object-cover" />
-                    ) : (
-                      <img src={p.preview_url} alt="" className="h-full w-full object-cover transition group-hover:scale-105" />
-                    )
-                  ) : null}
-                  <div className="absolute left-2.5 top-2.5 chip !bg-white/90 !backdrop-blur">
-                    {video ? <Play className="h-3 w-3" /> : null}
-                    @{p.uploader?.handle ?? "?"}
-                  </div>
-                  <div className="absolute right-2.5 top-2.5 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-bold text-background backdrop-blur">
-                    ${(p.price_cents / 100).toFixed(2)}
-                  </div>
-                  {p.status === "sold" && (
-                    <div className="absolute bottom-2.5 left-2.5 chip !bg-primary !text-primary-foreground !border-primary/40">완료</div>
+                <div className="relative aspect-square overflow-hidden">
+                  <img src={p.preview_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  {/* dense watermark overlay (visual only, not for new owned items) */}
+                  {!owned && (
+                    <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[repeating-linear-gradient(-20deg,transparent_0_20px,rgba(255,255,255,0.18)_20px_22px)]">
+                      <span className="rotate-[-12deg] text-[9px] font-bold tracking-widest text-white/90 mix-blend-overlay">SNAPPY</span>
+                    </div>
                   )}
+                  {p.is_video && (
+                    <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-foreground/80 text-background">
+                      <Play className="h-2.5 w-2.5" />
+                    </span>
+                  )}
+                  {owned ? (
+                    <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
+                      <BookmarkCheck className="h-2.5 w-2.5" />보관
+                    </span>
+                  ) : (
+                    <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">
+                      <Lock className="h-2.5 w-2.5" />${(p.price_cents / 100).toFixed(0)}
+                    </span>
+                  )}
+                  <span className="absolute bottom-1 left-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur">
+                    @{p.uploader.handle} · {relativeTime(p.received_at)}
+                  </span>
                 </div>
               </Link>
             );
