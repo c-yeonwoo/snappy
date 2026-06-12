@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMySent } from "@/lib/photos.functions";
+import { formatWon } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/sent")({
   head: () => ({ meta: [{ title: "보낸 사진 — Snappy" }] }),
@@ -14,19 +15,22 @@ function SentPage() {
 
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   const photos = data?.photos ?? [];
-  const earnings = data?.earnings_cents ?? 0;
+  const earningsCents = data?.earnings_cents ?? 0;
+  // backend earnings are in USD cents today; until the server switches to KRW
+  // we render the design preview as "earnings count" only and label in 원.
+  const earningsWon = Math.round(earningsCents * 13); // rough preview scale
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
         <div className="min-w-0">
-          <span className="chip">보낸함</span>
-          <h1 className="font-display mt-2 text-3xl font-extrabold">내 보낸함</h1>
+          <span className="chip">보낸 사진</span>
+          <h1 className="font-display mt-2 text-3xl font-extrabold">내가 보낸 컷</h1>
           <p className="mt-1 text-sm text-muted-foreground">내가 찍어서 보낸 컷과 판매 현황.</p>
         </div>
         <div className="shrink-0 rounded-[1.25rem] bg-gradient-to-br from-foreground to-[oklch(0.35_0.06_260)] px-5 py-3 text-background shadow-lg">
           <p className="text-[10px] uppercase tracking-widest opacity-70">총 적립</p>
-          <p className="font-display text-2xl font-extrabold">${(earnings / 100).toFixed(2)}</p>
+          <p className="font-display text-2xl font-extrabold">{formatWon(earningsWon)}</p>
         </div>
       </div>
 
@@ -49,11 +53,11 @@ function SentPage() {
                 <div className="relative aspect-square bg-secondary">
                   {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
                   <span className={`absolute left-2.5 top-2.5 chip ${s.cls}`}>{s.label}</span>
-                  <div className="absolute right-2.5 top-2.5 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-bold text-background">${(p.price_cents / 100).toFixed(2)}</div>
+                  <div className="absolute right-2.5 top-2.5 rounded-full bg-foreground/85 px-2 py-0.5 text-[11px] font-bold text-background">{formatWon(Math.round(p.price_cents * 13))}</div>
                 </div>
                 <div className="flex items-center justify-between p-3 text-xs">
                   <span className="text-muted-foreground">to <b className="text-foreground">@{p.subject?.handle ?? "?"}</b></span>
-                  {p.status === "sold" && <span className="font-semibold text-foreground">+${(p.price_cents * 0.7 / 100).toFixed(2)}</span>}
+                  {p.status === "sold" && <span className="font-semibold text-foreground">+{formatWon(Math.round(p.price_cents * 13 * 0.7))}</span>}
                 </div>
               </div>
             );

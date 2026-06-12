@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ImageOff, Play, Inbox, Send, Search, BookmarkCheck, Lock } from "lucide-react";
-import { MOCK_PHOTOS, usePurchased, isNew, relativeTime } from "@/lib/mock-feed";
+import { MOCK_PHOTOS, usePurchased, isNew, relativeTime, formatWon } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   head: () => ({ meta: [{ title: "받은함 — Snappy" }] }),
@@ -93,7 +93,7 @@ function FeedPage() {
                     </span>
                   ) : (
                     <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">
-                      <Lock className="h-2.5 w-2.5" />${(p.price_cents / 100).toFixed(0)}
+                      <Lock className="h-2.5 w-2.5" />{formatWon(p.price_won)}
                     </span>
                   )}
                   <span className="absolute bottom-1 left-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur">
