@@ -28,8 +28,8 @@ export async function watermarkImage(file: File, senderHandle?: string): Promise
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, w, h);
 
-  // 보낸 사람 id 없이 "Snappy"만. 사진을 가리지 않도록 연하고 듬성하게.
-  const tag = "Snappy";
+  const senderTag = senderHandle ? `@${senderHandle}` : "Snappy";
+  const tag = `${senderTag} · Snappy`;
 
   // tiled diagonal text (연하게)
   ctx.save();
@@ -54,7 +54,7 @@ export async function watermarkImage(file: File, senderHandle?: string): Promise
 
   // corner badge (연하게)
   const padding = Math.round(w * 0.02);
-  const badgeText = "Snappy";
+  const badgeText = senderTag;
   ctx.font = `bold ${Math.round(w * 0.022)}px sans-serif`;
   const metrics = ctx.measureText(badgeText);
   const badgeW = metrics.width + padding * 2;

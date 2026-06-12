@@ -58,6 +58,8 @@ function UploadPage() {
   const [price, setPrice] = useState(3000); // 원 (기본값)
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const MAX_UPLOAD_FILES = 20;
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
   // @ID 라이브 자동완성 (디바운스 250ms). 결과는 친구를 최상단으로 정렬.
   useEffect(() => {
@@ -78,6 +80,20 @@ function UploadPage() {
     if (!selected || files.length === 0) {
       toast.error("받는 사람과 사진을 선택해주세요");
       return;
+    }
+    if (files.length > MAX_UPLOAD_FILES) {
+      toast.error(`최대 ${MAX_UPLOAD_FILES}장까지 전송할 수 있어요.`);
+      return;
+    }
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("이미지 파일만 보내기 가능합니다.");
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("파일 당 20MB 이하만 업로드할 수 있어요.");
+        return;
+      }
     }
     // 전송 권한(친구 또는 받기설정)은 서버 createPhoto에서 강제. 친구가 아니어도
     // 상대가 받기 설정을 열어둔 경우 전송되므로 클라이언트에서 막지 않는다.
