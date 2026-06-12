@@ -15,12 +15,12 @@ export const Route = createFileRoute("/")({
 });
 
 const mock = [
-  { tag: "@yuna", emo: "🌊", price: 3, video: false },
-  { tag: "@minho", emo: "🎞️", price: 5, video: true },
-  { tag: "@jiwoo", emo: "🌸", price: 4, video: false },
-  { tag: "@sora", emo: "☁️", price: 3, video: false },
-  { tag: "@dan", emo: "🐬", price: 6, video: true },
-  { tag: "@hye", emo: "🪩", price: 4, video: false },
+  { tag: "@yuna", tone: "from-sky-soft to-sky", price: 3, video: false },
+  { tag: "@minho", tone: "from-sky to-accent", price: 5, video: true },
+  { tag: "@jiwoo", tone: "from-sky-soft to-accent/70", price: 4, video: false },
+  { tag: "@sora", tone: "from-accent/60 to-sky", price: 3, video: false },
+  { tag: "@dan", tone: "from-sky-deep/40 to-sky", price: 6, video: true },
+  { tag: "@hye", tone: "from-sky-soft to-sky-deep/30", price: 4, video: false },
 ];
 
 function Index() {
@@ -38,7 +38,7 @@ function Index() {
         </Link>
         <nav className="flex items-center gap-2">
           <Link to="/auth"><Button variant="ghost" size="sm" className="rounded-full">로그인</Button></Link>
-          <Link to="/auth"><Button size="sm" className="rounded-full px-4">시작 ✨</Button></Link>
+          <Link to="/auth"><Button size="sm" className="rounded-full px-4">시작</Button></Link>
         </nav>
       </header>
 
@@ -75,9 +75,8 @@ function Index() {
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {mock.map((c, i) => (
-              <div key={c.tag + i} className="relative aspect-[4/5] overflow-hidden rounded-[1.25rem] border border-white/70 bg-gradient-to-br from-sky-soft to-sky shadow-[0_12px_30px_-15px_rgba(56,189,248,0.45)]">
-                <div className="absolute inset-0 grid place-items-center text-4xl opacity-90">{c.emo}</div>
-                <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent_0_22px,rgba(255,255,255,0.4)_22px_24px)]" />
+              <div key={c.tag + i} className={`relative aspect-[4/5] overflow-hidden rounded-[1.25rem] border border-white/70 bg-gradient-to-br ${c.tone} shadow-[0_12px_30px_-15px_rgba(56,189,248,0.45)]`}>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.55),transparent_55%)]" />
                 <div className="absolute left-2 top-2 chip !px-1.5 !py-0.5 !text-[10px] !bg-white/90 !backdrop-blur">
                   {c.video ? <Play className="h-2.5 w-2.5" /> : <Camera className="h-2.5 w-2.5" />} {c.tag}
                 </div>
@@ -103,11 +102,11 @@ function Index() {
         </section>
 
         <div className="mt-7 flex flex-col gap-2">
-          <Link to="/auth"><Button size="lg" className="w-full rounded-full">무료로 시작 ✨</Button></Link>
+          <Link to="/auth"><Button size="lg" className="w-full rounded-full">무료로 시작</Button></Link>
           <Link to="/auth"><Button size="lg" variant="outline" className="w-full rounded-full bg-card">로그인</Button></Link>
         </div>
 
-        <footer className="mt-10 text-center text-xs text-muted-foreground">made with ☁️ by snappy</footer>
+        <footer className="mt-10 text-center text-xs text-muted-foreground">made by snappy</footer>
       </main>
     </div>
   );

@@ -20,7 +20,7 @@ function SentPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
         <div className="min-w-0">
-          <span className="chip">💌 보낸함</span>
+          <span className="chip">보낸함</span>
           <h1 className="font-display mt-2 text-3xl font-extrabold">내 보낸함</h1>
           <p className="mt-1 text-sm text-muted-foreground">내가 찍어서 보낸 컷과 판매 현황.</p>
         </div>
@@ -33,13 +33,13 @@ function SentPage() {
       {photos.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
           <p className="text-muted-foreground">아직 보낸 컷이 없어요.</p>
-          <Link to="/upload" className="mt-3 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">📮 보내러 가기</Link>
+          <Link to="/upload" className="mt-3 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">보내러 가기</Link>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((p) => {
             const statusMap = {
-              sold: { label: "판매 ✓", cls: "!bg-primary !text-primary-foreground !border-primary/40" },
+              sold: { label: "판매", cls: "!bg-primary !text-primary-foreground !border-primary/40" },
               removed: { label: "삭제", cls: "!bg-destructive !text-destructive-foreground !border-destructive/40" },
               available: { label: "대기 중", cls: "" },
             } as const;

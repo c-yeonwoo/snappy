@@ -88,9 +88,9 @@ function UploadPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
-        <span className="chip">📮 보내기</span>
+        <span className="chip">보내기</span>
         <h1 className="font-display mt-2 text-3xl font-extrabold">사진·영상 보내기</h1>
-        <p className="mt-1 text-sm text-muted-foreground">받는 사람을 찾고 올려요. 자동 워터마크 ✨</p>
+        <p className="mt-1 text-sm text-muted-foreground">받는 사람을 찾고 올려요. 자동 워터마크 적용.</p>
       </header>
 
       <section className="rounded-[1.75rem] border border-white/70 bg-card/90 p-6 backdrop-blur">
@@ -163,12 +163,12 @@ function UploadPage() {
               <span className="font-display w-14 text-center text-lg font-extrabold">${price}</span>
               <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(100, price + 1))}>+</Button>
             </div>
-            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">${(price * 0.7).toFixed(2)}</b> 내 적립 💰</p>
+            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">${(price * 0.7).toFixed(2)}</b> 내 적립</p>
           </div>
         </div>
         <div>
           <Label htmlFor="note" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">메시지 (선택)</Label>
-          <Textarea id="note" maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} className="mt-2 rounded-2xl" placeholder="짧은 메시지도 함께 ✨" />
+          <Textarea id="note" maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} className="mt-2 rounded-2xl" placeholder="짧은 메시지" />
         </div>
       </section>
 

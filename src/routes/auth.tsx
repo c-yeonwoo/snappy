@@ -60,7 +60,7 @@ function AuthPage() {
       </header>
       <main className="relative flex flex-1 items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md rounded-[1.75rem] border border-white/60 bg-card/90 p-7 shadow-[0_30px_80px_-30px_rgba(125,160,200,0.45)] backdrop-blur">
-          <span className="chip">👋 어서와요</span>
+          <span className="chip">어서와요</span>
           <h1 className="font-display mt-3 text-3xl font-extrabold">시작해볼까요?</h1>
           <p className="mt-1 text-sm text-muted-foreground">이메일로 가입하고 사진·영상을 주고받아요.</p>
           <Tabs defaultValue="signin" className="mt-6">
@@ -95,7 +95,7 @@ function AuthPage() {
                   <Label htmlFor="password2">비밀번호</Label>
                   <Input id="password2" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
-                <Button type="submit" className="w-full rounded-full" disabled={loading}>가입하기 ✨</Button>
+                <Button type="submit" className="w-full rounded-full" disabled={loading}>가입하기</Button>
               </form>
             </TabsContent>
           </Tabs>
