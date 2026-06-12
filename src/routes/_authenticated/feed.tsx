@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ImageOff, Play, Inbox, Send, Search, BookmarkCheck, Lock } from "lucide-react";
+import { ImageOff, Play, Inbox, Send, Search, BookmarkCheck, Lock, Sparkles } from "lucide-react";
 import { MOCK_PHOTOS, usePurchased, isNew, relativeTime, formatWon } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/feed")({
@@ -10,20 +10,27 @@ export const Route = createFileRoute("/_authenticated/feed")({
 
 function FeedPage() {
   const purchased = usePurchased();
-  const [tab, setTab] = useState<"new" | "saved">("new");
+  const [tab, setTab] = useState<"received" | "album">("received");
 
-  const newOnes = MOCK_PHOTOS.filter((p) => isNew(p, purchased));
-  const saved = MOCK_PHOTOS.filter((p) => purchased.has(p.id));
-  const photos = tab === "new" ? newOnes : saved;
+  // "받은 사진" keeps every photo I haven't purchased yet (no auto-delete).
+  // "내 앨범" is the collection of photos I've bought the original of.
+  const received = MOCK_PHOTOS.filter((p) => !purchased.has(p.id));
+  const album = MOCK_PHOTOS.filter((p) => purchased.has(p.id));
+  const photos = tab === "received" ? received : album;
+  const newCount = received.filter(isNew).length;
 
   return (
     <div>
       <header className="mb-5 flex items-end justify-between gap-3">
         <div>
           <span className="chip"><Inbox className="h-3.5 w-3.5" /> 내 피드</span>
-          <h1 className="font-display mt-2 text-3xl font-extrabold">{tab === "new" ? "받은함" : "보관함"}</h1>
+          <h1 className="font-display mt-2 text-3xl font-extrabold">
+            {tab === "received" ? "받은 사진" : "내 앨범"}
+          </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {tab === "new" ? "최근 24시간 안에 새로 받은 컷이에요." : "구매해서 원본으로 보관 중인 컷."}
+            {tab === "received"
+              ? "친구들이 보내준 모든 컷. 워터마크 위에서 골라보세요."
+              : "내가 결제해서 원본으로 가지고 있는 컷."}
           </p>
         </div>
         <p className="shrink-0 text-xs text-muted-foreground">{photos.length}개</p>
@@ -31,13 +38,16 @@ function FeedPage() {
 
       {/* Tabs */}
       <div className="mb-4 inline-flex w-full rounded-full border border-border bg-card/80 p-1 backdrop-blur">
-        {(["new", "saved"] as const).map((t) => (
+        {(["received", "album"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === t ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}
+            className={`relative flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === t ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}
           >
-            {t === "new" ? `받은함 · ${newOnes.length}` : `보관함 · ${saved.length}`}
+            {t === "received" ? `받은 사진 · ${received.length}` : `내 앨범 · ${album.length}`}
+            {t === "received" && newCount > 0 && tab !== "received" && (
+              <span className="absolute -top-1 -right-1 grid h-4 min-w-[16px] place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">{newCount}</span>
+            )}
           </button>
         ))}
       </div>
@@ -58,15 +68,16 @@ function FeedPage() {
       {photos.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-soft">
-            {tab === "new" ? <ImageOff className="h-6 w-6 text-foreground" /> : <BookmarkCheck className="h-6 w-6 text-foreground" />}
+            {tab === "received" ? <ImageOff className="h-6 w-6 text-foreground" /> : <BookmarkCheck className="h-6 w-6 text-foreground" />}
           </div>
-          <h2 className="font-display mt-4 text-lg font-bold">{tab === "new" ? "새 컷이 없어요" : "보관한 컷이 없어요"}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{tab === "new" ? "친구가 보내면 여기로 도착해요." : "마음에 든 컷을 결제하면 모여요."}</p>
+          <h2 className="font-display mt-4 text-lg font-bold">{tab === "received" ? "받은 컷이 없어요" : "앨범이 비어 있어요"}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{tab === "received" ? "친구가 보내면 여기로 도착해요." : "마음에 든 컷을 결제하면 모여요."}</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
           {photos.map((p) => {
             const owned = purchased.has(p.id);
+            const fresh = !owned && isNew(p);
             return (
               <Link
                 key={p.id}
@@ -81,6 +92,11 @@ function FeedPage() {
                     <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[repeating-linear-gradient(-20deg,transparent_0_20px,rgba(255,255,255,0.18)_20px_22px)]">
                       <span className="rotate-[-12deg] text-[9px] font-bold tracking-widest text-white/90 mix-blend-overlay">SNAPPY</span>
                     </div>
+                  )}
+                  {fresh && (
+                    <span className="absolute right-1 bottom-1 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground shadow">
+                      <Sparkles className="h-2.5 w-2.5" />NEW
+                    </span>
                   )}
                   {p.is_video && (
                     <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-foreground/80 text-background">

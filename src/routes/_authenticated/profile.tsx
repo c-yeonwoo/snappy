@@ -5,7 +5,7 @@ import { getMyProfile } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useFriendsStore, formatRemaining } from "@/lib/friends-mock";
 import { usePurchased, MOCK_PHOTOS } from "@/lib/mock-feed";
-import { Settings, Users, ChevronRight, LogOut, BookmarkCheck, Radio } from "lucide-react";
+import { Settings, Users, ChevronRight, LogOut, BookmarkCheck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "나 — Snappy" }] }),
@@ -52,9 +52,8 @@ function ProfilePage() {
       {/* Menu */}
       <nav className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-card/90 backdrop-blur">
         <Row to="/friends" icon={Users} label="친구" hint={`${friends.length}명`} />
-        <Row to="/feed" icon={BookmarkCheck} label="보관함" hint={`${savedCount}컷`} />
-        <Row to="/settings" icon={Radio} label="받기 설정" hint={windowUntil ? `${formatRemaining(windowUntil)} 남음` : "친구만"} />
-        <Row to="/settings" icon={Settings} label="설정" />
+        <Row to="/feed" icon={BookmarkCheck} label="내 앨범" hint={`${savedCount}컷`} />
+        <Row to="/settings" icon={Settings} label="설정" hint={windowUntil ? `받기 ON · ${formatRemaining(windowUntil)}` : undefined} />
       </nav>
 
       <button onClick={signOut} className="flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card/70 px-4 py-3 text-sm font-semibold text-muted-foreground">
