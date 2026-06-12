@@ -135,7 +135,7 @@ export const getMySent = createServerFn({ method: "GET" })
       .from("photos")
       .select("id, subject_id, original_path, price_won, status, created_at, batch_id")
       .eq("uploader_id", context.userId)
-      // .neq("uploader_hidden" as any, true)  ← migration 적용 후 활성화
+      .neq("uploader_hidden" as any, true)
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw dbError(error);
