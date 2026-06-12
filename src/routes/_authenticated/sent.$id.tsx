@@ -157,9 +157,13 @@ function SentBatchPage() {
 
       {/* 전송 취소 */}
       {available.length > 0 && (
-        <Button variant="destructive" className="w-full rounded-full" onClick={cancelAll} disabled={busy}>
-          <X className="mr-1.5 h-4 w-4" /> 대기 중 {available.length}장 전송 취소
-        </Button>
+        <button
+          onClick={cancelAll}
+          disabled={busy}
+          className="flex w-full items-center justify-center gap-1.5 rounded-full border border-border/60 py-3 text-sm font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-40"
+        >
+          <X className="h-3.5 w-3.5" /> 대기 중 {available.length}장 전송 취소
+        </button>
       )}
     </div>
   );

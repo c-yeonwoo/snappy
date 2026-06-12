@@ -17,13 +17,14 @@ function SentPage() {
   const cancelFn = useServerFn(cancelPhotos);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["sent"], queryFn: () => fn() });
-  const [tab, setTab] = useState<"sent" | "sales">("sent");
+  const [tab, setTab] = useState<"sent" | "history">("sent");
 
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   const photos = data?.photos ?? [];
-  const sold = photos.filter((p) => p.status === "sold");
+  // 히스토리: 소장됨 / 반려됨 / 신고됨 — 최신순
+  const history = photos.filter((p) => p.status !== "available");
   const sentTotal = photos.length;
-  const soldTotal = sold.length;
+  const soldTotal = photos.filter((p) => p.status === "sold").length;
 
   function group(items: typeof photos) {
     const m = new Map<string, typeof photos>();
@@ -85,13 +86,13 @@ function SentPage() {
 
       {/* Tabs */}
       <div className="inline-flex w-full rounded-full border border-border bg-card/80 p-1 backdrop-blur">
-        {(["sent", "sales"] as const).map((t) => (
+        {(["sent", "history"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === t ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}
           >
-            {t === "sent" ? `보낸 사진 · ${photos.length}` : `소장 내역 · ${sold.length}`}
+            {t === "sent" ? `보낸 사진 · ${photos.length}` : `히스토리 · ${history.length}`}
           </button>
         ))}
       </div>
@@ -135,26 +136,44 @@ function SentPage() {
             })}
           </div>
         )
-      ) : sold.length === 0 ? (
+      ) : history.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-secondary"><Coins className="h-6 w-6 text-foreground" /></div>
-          <h2 className="font-display mt-4 text-lg font-bold">아직 소장된 컷이 없어요</h2>
-          <p className="mt-1 text-sm text-muted-foreground">친구가 내 컷을 소장하면 여기에 기록돼요.</p>
+          <h2 className="font-display mt-4 text-lg font-bold">아직 기록이 없어요</h2>
+          <p className="mt-1 text-sm text-muted-foreground">소장, 반려, 신고 내역이 여기에 쌓여요.</p>
         </div>
       ) : (
         <ul className="space-y-2">
-          {sold.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 p-2.5 backdrop-blur">
-              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
-                {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold"><b>@{p.subject?.handle ?? "?"}</b> 님이 소장</p>
-                <p className="text-[11px] text-muted-foreground">가격 {formatPoint(p.price_won)}</p>
-              </div>
-              <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
-            </li>
-          ))}
+          {history.map((p) => {
+            const isSold = p.status === "sold";
+            const isRemoved = p.status === "removed";
+            const statusMap: Record<string, { label: string; cls: string }> = {
+              sold:     { label: "소장됨", cls: "!bg-primary/15 !text-primary !border-primary/30" },
+              removed:  { label: "반려됨", cls: "!bg-muted !text-muted-foreground !border-border" },
+              reported: { label: "신고됨", cls: "!bg-destructive/10 !text-destructive !border-destructive/20" },
+            };
+            const statusConfig = statusMap[p.status] ?? { label: p.status, cls: "" };
+            return (
+              <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 p-2.5 backdrop-blur">
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                  {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`chip !text-[9px] !px-1.5 !py-0.5 ${statusConfig.cls}`}>{statusConfig.label}</span>
+                    <p className="truncate text-sm font-semibold">@{p.subject?.handle ?? "?"}</p>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{formatPoint(p.price_won)}</p>
+                </div>
+                {isSold && (
+                  <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
+                )}
+                {isRemoved && (
+                  <span className="shrink-0 text-xs text-muted-foreground">반려</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
