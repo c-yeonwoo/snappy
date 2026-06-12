@@ -18,9 +18,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          uploader_hidden: boolean
+          batch_id: string | null
           note: string | null
           original_path: string
-          price_cents: number
+          price_won: number
           status: Database["public"]["Enums"]["photo_status"]
           subject_id: string
           uploader_id: string
@@ -29,9 +31,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          uploader_hidden?: boolean
+          batch_id?: string | null
           note?: string | null
           original_path: string
-          price_cents?: number
+          price_won?: number
           status?: Database["public"]["Enums"]["photo_status"]
           subject_id: string
           uploader_id: string
@@ -40,9 +44,11 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          uploader_hidden?: boolean
+          batch_id?: string | null
           note?: string | null
           original_path?: string
-          price_cents?: number
+          price_won?: number
           status?: Database["public"]["Enums"]["photo_status"]
           subject_id?: string
           uploader_id?: string
@@ -58,6 +64,7 @@ export type Database = {
           handle: string
           id: string
           updated_at: string
+          allow_until: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -66,6 +73,7 @@ export type Database = {
           handle: string
           id: string
           updated_at?: string
+          allow_until?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -74,39 +82,43 @@ export type Database = {
           handle?: string
           id?: string
           updated_at?: string
+          allow_until?: string | null
         }
         Relationships: []
       }
       purchases: {
         Row: {
-          amount_cents: number
+          amount_won: number
           buyer_id: string
           created_at: string
           id: string
           photo_id: string
           status: Database["public"]["Enums"]["purchase_status"]
-          uploader_earning_cents: number
+          uploader_earning_won: number
           uploader_id: string
+          session_id: string | null
         }
         Insert: {
-          amount_cents: number
+          amount_won: number
           buyer_id: string
           created_at?: string
           id?: string
           photo_id: string
           status?: Database["public"]["Enums"]["purchase_status"]
-          uploader_earning_cents: number
+          uploader_earning_won: number
           uploader_id: string
+          session_id?: string | null
         }
         Update: {
-          amount_cents?: number
+          amount_won?: number
           buyer_id?: string
           created_at?: string
           id?: string
           photo_id?: string
           status?: Database["public"]["Enums"]["purchase_status"]
-          uploader_earning_cents?: number
+          uploader_earning_won?: number
           uploader_id?: string
+          session_id?: string | null
         }
         Relationships: [
           {
@@ -150,6 +162,182 @@ export type Database = {
           },
         ]
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      photo_access_logs: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_type: "uploaded" | "preview" | "detail_view" | "download" | "purchase" | "share" | "report"
+          id: string
+          ip: string | null
+          metadata: Json | null
+          photo_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_type: "uploaded" | "preview" | "detail_view" | "download" | "purchase" | "share" | "report"
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          photo_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_type?: "uploaded" | "preview" | "detail_view" | "download" | "purchase" | "share" | "report"
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          photo_id?: string
+          user_agent?: string | null
+        }
+      }
+      photo_purchase_sessions: {
+        Row: {
+          buyer_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          order_id: string
+          payment_key: string | null
+          photos: string[]
+          provider: "mock" | "toss"
+          status: "pending" | "completed" | "failed" | "cancelled"
+          total_amount_won: number
+        }
+        Insert: {
+          buyer_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          payment_key?: string | null
+          photos?: string[]
+          provider?: "mock" | "toss"
+          status?: "pending" | "completed" | "failed" | "cancelled"
+          total_amount_won?: number
+        }
+        Update: {
+          buyer_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          payment_key?: string | null
+          photos?: string[]
+          provider?: "mock" | "toss"
+          status?: "pending" | "completed" | "failed" | "cancelled"
+          total_amount_won?: number
+        }
+      }
+      point_charge_sessions: {
+        Row: {
+          amount_won: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          kind: "charge" | "withdraw"
+          metadata: Json | null
+          order_id: string
+          payment_key: string | null
+          provider: "mock" | "toss"
+          status: "pending" | "completed" | "failed"
+          user_id: string
+        }
+        Insert: {
+          amount_won: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind: "charge" | "withdraw"
+          metadata?: Json | null
+          order_id: string
+          payment_key?: string | null
+          provider?: "mock" | "toss"
+          status?: "pending" | "completed" | "failed"
+          user_id: string
+        }
+        Update: {
+          amount_won?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: "charge" | "withdraw"
+          metadata?: Json | null
+          order_id?: string
+          payment_key?: string | null
+          provider?: "mock" | "toss"
+          status?: "pending" | "completed" | "failed"
+          user_id?: string
+        }
+      }
+      wallet_transactions: {
+        Row: {
+          amount_won: number
+          created_at: string
+          id: string
+          kind: "earn" | "spend" | "charge" | "withdraw" | "refund"
+          metadata: Json | null
+          note: string | null
+          related_photo_id: string | null
+          session_id: string | null
+          status: "pending" | "completed" | "failed"
+          user_id: string
+        }
+        Insert: {
+          amount_won: number
+          created_at?: string
+          id?: string
+          kind: "earn" | "spend" | "charge" | "withdraw" | "refund"
+          metadata?: Json | null
+          note?: string | null
+          related_photo_id?: string | null
+          session_id?: string | null
+          status?: "pending" | "completed" | "failed"
+          user_id: string
+        }
+        Update: {
+          amount_won?: number
+          created_at?: string
+          id?: string
+          kind?: "earn" | "spend" | "charge" | "withdraw" | "refund"
+          metadata?: Json | null
+          note?: string | null
+          related_photo_id?: string | null
+          session_id?: string | null
+          status?: "pending" | "completed" | "failed"
+          user_id?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -158,7 +346,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      photo_status: "available" | "sold" | "removed"
+      photo_status: "available" | "sold" | "removed" | "reported"
       purchase_status: "pending" | "completed" | "failed"
     }
     CompositeTypes: {

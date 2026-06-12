@@ -1,13 +1,261 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const EARNING_RATE = 0.7;
+const MOCK_PAYMENT_KEY = "mock_toss_payment_key_0000";
+const TOSS_CLIENT_KEY =
+  process.env.TOSS_CLIENT_KEY ?? process.env.VITE_TOSS_CLIENT_KEY ?? process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
+const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY ?? "";
+const POINT_CHARGE_CALLBACK_URL = process.env.POINT_CHARGE_CALLBACK_URL ?? "";
+const WITHDRAW_CALLBACK_URL = process.env.POINT_WITHDRAW_CALLBACK_URL ?? "";
+
+function isMockPayment(key: string) {
+  return !key || key.includes("mock") || key.includes("test") || key.includes("YOUR_");
+}
+
+const PAYMENT_MODE = isMockPayment(TOSS_CLIENT_KEY) ? "mock" : "real";
+const DEFAULT_ORDER_NAME = "Snappy 사진 소장";
+const MAX_BATCH_SIZE = 20;
+const MAX_CHARGE_AMOUNT = 200000;
 
 // DB/스토리지 오류는 사용자에겐 한글 일반 메시지로 노출하고, 원본은 서버 로그로 남긴다.
 function dbError(e: { message?: string } | null | undefined) {
   console.error("[supabase]", e?.message);
   return new Error("요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
+}
+
+function parseCallbackUrl(raw: string) {
+  if (!raw) return undefined;
+  try {
+    return new URL(raw).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function generateOrderId(prefix = "snp") {
+  return `${prefix}_${Date.now()}_${crypto.randomUUID().replace(/-/g, "").slice(0, 14)}`;
+}
+
+function getTossConfig() {
+  return {
+    mode: PAYMENT_MODE,
+    client_key: PAYMENT_MODE === "mock" ? MOCK_PAYMENT_KEY : TOSS_CLIENT_KEY,
+    secret_key_present: !!TOSS_SECRET_KEY,
+    callback: {
+      charge: parseCallbackUrl(POINT_CHARGE_CALLBACK_URL),
+      withdraw: parseCallbackUrl(WITHDRAW_CALLBACK_URL),
+    },
+  };
+}
+
+async function getWalletBalance(supabaseAdmin: any, userId: string): Promise<number> {
+  const { data, error } = await supabaseAdmin
+    .from("wallet_transactions")
+    .select("amount_won")
+    .eq("user_id", userId)
+    .eq("status", "completed");
+  if (error) return 0;
+  return (data ?? []).reduce((sum, r) => sum + (r.amount_won ?? 0), 0);
+}
+
+async function applyWalletCredit(
+  supabaseAdmin: any,
+  params: {
+    user_id: string;
+    amount_won: number;
+    kind: "earn" | "spend" | "charge" | "withdraw" | "refund";
+    related_photo_id?: string;
+    session_id?: string;
+    note: string;
+  },
+) {
+  if (params.amount_won === 0) return;
+  await supabaseAdmin.from("wallet_transactions").insert({
+    user_id: params.user_id,
+    amount_won: params.amount_won,
+    kind: params.kind,
+    status: "completed",
+    related_photo_id: params.related_photo_id ?? null,
+    session_id: params.session_id ?? null,
+    note: params.note,
+  });
+}
+
+async function ensurePhotoPurchaseSessionOwner(supabaseAdmin: any, sessionId: string, userId: string) {
+  const { data: session } = await supabaseAdmin
+    .from("photo_purchase_sessions")
+    .select("id, buyer_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!session) throw new Error("결제 세션을 찾을 수 없어요.");
+  if (session.buyer_id !== userId) throw new Error("본인 결제만 확인할 수 있어요.");
+  return session;
+}
+
+async function ensurePointSession(supabaseAdmin: any, orderId: string, userId: string) {
+  const { data: session } = await supabaseAdmin
+    .from("point_charge_sessions")
+    .select("id, user_id, kind, amount_won, status")
+    .eq("order_id", orderId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!session) throw new Error("결제 세션을 찾을 수 없어요.");
+  return session;
+}
+
+function getClientIp() {
+  const req = getRequest();
+  if (!req) return null;
+  return (
+    req.headers.get("x-forwarded-for") ??
+    req.headers.get("x-real-ip") ??
+    req.headers.get("cf-connecting-ip") ??
+    null
+  );
+}
+
+async function logPhotoAccess(contextUserId: string, photoId: string, eventType: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const req = getRequest();
+  await supabaseAdmin.from("photo_access_logs").insert({
+    photo_id: photoId,
+    actor_id: contextUserId,
+    event_type: eventType,
+    ip: getClientIp(),
+    user_agent: req?.headers.get("user-agent"),
+  });
+}
+
+async function createPurchaseSessionRows(
+  supabaseAdmin: any,
+  userId: string,
+  photoRows: Array<{ id: string; price_won: number; uploader_id: string; uploader_name?: string }>,
+) {
+  const session_id = crypto.randomUUID();
+  const total = photoRows.reduce((sum, p) => sum + p.price_won, 0);
+  const order_id = generateOrderId("snp");
+  const payload = {
+    photo_count: photoRows.length,
+    photo_ids: photoRows.map((p) => p.id),
+  };
+  const { error: sessionErr } = await supabaseAdmin.from("photo_purchase_sessions").insert({
+    id: session_id,
+    buyer_id: userId,
+    order_id,
+    total_amount_won: total,
+    status: "pending",
+    photos: payload.photo_ids,
+    provider: PAYMENT_MODE === "mock" ? "mock" : "toss",
+    metadata: payload,
+  });
+  if (sessionErr) throw dbError(sessionErr);
+
+  await supabaseAdmin.from("purchases").insert(
+    photoRows.map((p) => ({
+      photo_id: p.id,
+      buyer_id: userId,
+      uploader_id: p.uploader_id,
+      amount_won: p.price_won,
+      uploader_earning_won: Math.floor(p.price_won * EARNING_RATE),
+      status: "pending",
+      session_id,
+    })),
+  );
+
+  return {
+    session_id,
+    order_id,
+    total_amount_won: total,
+  };
+}
+
+async function completePurchaseSession(
+  sessionId: string,
+  context: { supabaseAdmin: any; userId: string },
+  forceComplete = false,
+) {
+  await ensurePhotoPurchaseSessionOwner(context.supabaseAdmin, sessionId, context.userId);
+  const { data: session, error: sessionErr } = await context.supabaseAdmin
+    .from("photo_purchase_sessions")
+      .select("id, buyer_id, total_amount_won, photos, status, metadata, order_id")
+    .eq("id", sessionId)
+    .single();
+  if (sessionErr || !session) throw new Error("결제 세션을 찾을 수 없습니다.");
+  if (session.status !== "pending" && session.status !== "completed") {
+    throw new Error("이미 처리되었거나 유효하지 않은 결제입니다.");
+  }
+  if (session.status === "completed") {
+    return session;
+  }
+
+  const photoIds = (session.photos ?? []) as string[];
+  const { data: photos, error: photoError } = await context.supabaseAdmin
+    .from("photos")
+    .select("id, uploader_id, subject_id, price_won, status, original_path")
+    .in("id", photoIds)
+    .eq("subject_id", context.userId)
+    .eq("status", "available");
+  if (photoError) throw dbError(photoError);
+
+  const targets = photos ?? [];
+  if (targets.length === 0) throw new Error("결제할 수 있는 사진이 없습니다.");
+
+  const required = targets.reduce((sum, p) => sum + p.price_won, 0);
+  const balance = await getWalletBalance(context.supabaseAdmin, context.userId);
+  if (!forceComplete && balance < required) {
+    throw new Error("포인트가 부족해요. 충전 후 다시 시도해주세요.");
+  }
+
+  const updatedTargets: typeof targets = [];
+  for (const photo of targets) {
+    const { error: updErr } = await context.supabaseAdmin
+      .from("photos")
+      .update({ status: "sold", updated_at: new Date().toISOString() })
+      .eq("id", photo.id)
+      .eq("status", "available");
+    if (!updErr) updatedTargets.push(photo);
+    await logPhotoAccess(context.userId, photo.id, "purchase");
+  }
+
+  if (updatedTargets.length === 0) throw new Error("이미 모두 처리되었어요.");
+
+  await context.supabaseAdmin.from("wallet_transactions").insert({
+    user_id: context.userId,
+    amount_won: -required,
+    kind: "spend",
+    status: "completed",
+    session_id: sessionId,
+    note: `photo purchase: ${session.order_id ?? sessionId}`,
+  });
+
+  for (const photo of updatedTargets) {
+    const earning = Math.floor(photo.price_won * EARNING_RATE);
+    const { error: purchaseErr } = await context.supabaseAdmin
+      .from("purchases")
+      .update({ status: "completed", created_at: new Date().toISOString() })
+      .eq("session_id", sessionId)
+      .eq("photo_id", photo.id)
+      .eq("status", "pending");
+    if (purchaseErr) throw dbError(purchaseErr);
+    await applyWalletCredit(context.supabaseAdmin, {
+      user_id: photo.uploader_id,
+      amount_won: earning,
+      kind: "earn",
+      related_photo_id: photo.id,
+      session_id: sessionId,
+      note: `photo sale: ${photo.id}`,
+    });
+  }
+
+  await context.supabaseAdmin
+    .from("photo_purchase_sessions")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", sessionId);
+
+  return { ...session, status: "completed", photos: updatedTargets };
 }
 
 export const searchProfiles = createServerFn({ method: "POST" })
@@ -77,6 +325,7 @@ export const createPhoto = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw dbError(error);
+    await logPhotoAccess(context.userId, row.id, "uploaded");
     return { id: row.id };
   });
 
@@ -125,6 +374,7 @@ export const getMyFeed = createServerFn({ method: "GET" })
         uploader: profilesMap[p.uploader_id] ?? null,
       };
     });
+    for (const item of list) await logPhotoAccess(context.userId, item.id, "preview");
     return { photos: enriched };
   });
 
@@ -212,6 +462,7 @@ export const getPhotoDetail = createServerFn({ method: "POST" })
         original_url = og?.signedUrl ?? null;
       }
     }
+    await logPhotoAccess(context.userId, photo.id, "detail_view");
 
     return {
       photo: {
@@ -245,27 +496,202 @@ export const purchasePhoto = createServerFn({ method: "POST" })
     if (photo.subject_id !== context.userId) throw new Error("받는 사람만 소장할 수 있어요");
     if (photo.status !== "available") throw new Error("이미 소장되었거나 받을 수 없는 사진이에요");
 
-    const earning = Math.floor(photo.price_won * EARNING_RATE);
+    if (photoRowsOverLimit(1)) {
+      throw new Error("요청 수가 허용 범위를 초과했어요.");
+    }
 
-    // NOTE: 토스페이먼츠 결제 연동은 다음 단계. MVP에서는 즉시 completed 처리.
-    const { error: insErr } = await supabaseAdmin.from("purchases").insert({
-      photo_id: photo.id,
-      buyer_id: context.userId,
-      uploader_id: photo.uploader_id,
-      amount_won: photo.price_won,
-      uploader_earning_won: earning,
-      status: "completed",
-    });
-    if (insErr) throw dbError(insErr);
+    const { session_id, order_id, total_amount_won } = await createPurchaseSessionRows(supabaseAdmin, context.userId, [
+      { id: photo.id, price_won: photo.price_won, uploader_id: photo.uploader_id },
+    ]);
+    const isMock = PAYMENT_MODE === "mock" || TOSS_CLIENT_KEY.includes("mock");
 
-    await supabaseAdmin.from("photos").update({ status: "sold" }).eq("id", photo.id);
+    if (isMock) {
+      const completed = await completePurchaseSession(session_id, { supabaseAdmin, userId: context.userId }, true);
+      const target = completed.photos?.[0] ?? photo;
+      const { data: signed } = await supabaseAdmin.storage
+        .from("photos-original")
+        .createSignedUrl(target.original_path, 60 * 10);
+      return {
+        status: "completed",
+        session_id,
+        original_url: signed?.signedUrl ?? null,
+      };
+    }
 
-    const { data: signed } = await supabaseAdmin.storage
-      .from("photos-original")
-      .createSignedUrl(photo.original_path, 60 * 10);
-
-    return { original_url: signed?.signedUrl ?? null };
+    return {
+      status: "pending",
+      session_id,
+      order_id,
+      order_name: DEFAULT_ORDER_NAME,
+      amount_won: total_amount_won,
+      payment: getTossConfig(),
+    };
   });
+
+export const requestPointCharge = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ amount_won: z.number().int().min(1000).max(MAX_CHARGE_AMOUNT) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const order_id = generateOrderId("chg");
+    const { error } = await supabaseAdmin.from("point_charge_sessions").insert({
+      id: crypto.randomUUID(),
+      user_id: context.userId,
+      kind: "charge",
+      order_id,
+      amount_won: data.amount_won,
+      status: PAYMENT_MODE === "mock" ? "completed" : "pending",
+      provider: PAYMENT_MODE === "mock" ? "mock" : "toss",
+      metadata: { request_source: "profile_charge" },
+    });
+    if (error) throw dbError(error);
+
+    if (PAYMENT_MODE === "mock") {
+      await applyWalletCredit(supabaseAdmin, {
+        user_id: context.userId,
+        amount_won: data.amount_won,
+        kind: "charge",
+        session_id: order_id,
+        note: `point charge mock: ${order_id}`,
+      });
+      return {
+        status: "completed",
+        order_id,
+      };
+    }
+
+    return {
+      status: "pending",
+      order_id,
+      amount_won: data.amount_won,
+      payment: getTossConfig(),
+    };
+  });
+
+export const requestPointWithdraw = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ amount_won: z.number().int().min(1000).max(MAX_CHARGE_AMOUNT) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const balance = await getWalletBalance(supabaseAdmin, context.userId);
+    if (balance < data.amount_won) throw new Error("출금 가능 포인트가 부족해요.");
+    const order_id = generateOrderId("wd");
+    const { error } = await supabaseAdmin.from("point_charge_sessions").insert({
+      id: crypto.randomUUID(),
+      user_id: context.userId,
+      kind: "withdraw",
+      order_id,
+      amount_won: data.amount_won,
+      status: PAYMENT_MODE === "mock" ? "completed" : "pending",
+      provider: PAYMENT_MODE === "mock" ? "mock" : "toss",
+      metadata: { request_source: "profile_withdraw" },
+    });
+    if (error) throw dbError(error);
+
+    if (PAYMENT_MODE === "mock") {
+      await applyWalletCredit(supabaseAdmin, {
+        user_id: context.userId,
+        amount_won: -data.amount_won,
+        kind: "withdraw",
+        session_id: order_id,
+        note: `point withdraw mock: ${order_id}`,
+      });
+      return {
+        status: "completed",
+        order_id,
+      };
+    }
+
+    return {
+      status: "pending",
+      order_id,
+      amount_won: data.amount_won,
+      payment: getTossConfig(),
+    };
+  });
+
+export const confirmPointCharge = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ order_id: z.string(), payment_key: z.string().optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const session = await ensurePointSession(supabaseAdmin, data.order_id, context.userId);
+    if (session.kind !== "charge") throw new Error("충전 세션이 아니에요.");
+    if (session.status === "completed") return { status: "completed", order_id: data.order_id };
+    if (PAYMENT_MODE !== "mock" && !data.payment_key) throw new Error("결제 승인키가 필요해요.");
+    const { error } = await supabaseAdmin
+      .from("point_charge_sessions")
+      .update({ status: "completed", payment_key: data.payment_key ?? null, completed_at: new Date().toISOString() })
+      .eq("order_id", data.order_id);
+    if (error) throw dbError(error);
+    await applyWalletCredit(supabaseAdmin, {
+      user_id: context.userId,
+      amount_won: session.amount_won,
+      kind: "charge",
+      session_id: data.order_id,
+      note: `point charge: ${data.order_id}`,
+    });
+    return { status: "completed", order_id: data.order_id };
+  });
+
+export const confirmPointWithdraw = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ order_id: z.string(), payment_key: z.string().optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const session = await ensurePointSession(supabaseAdmin, data.order_id, context.userId);
+    if (session.kind !== "withdraw") throw new Error("출금 세션이 아니에요.");
+    if (session.status === "completed") return { status: "completed", order_id: data.order_id };
+    if (PAYMENT_MODE !== "mock" && !data.payment_key) throw new Error("결제 승인키가 필요해요.");
+    const balance = await getWalletBalance(supabaseAdmin, context.userId);
+    if (balance < session.amount_won) throw new Error("출금 가능 포인트가 부족해요.");
+    const { error } = await supabaseAdmin
+      .from("point_charge_sessions")
+      .update({ status: "completed", payment_key: data.payment_key ?? null, completed_at: new Date().toISOString() })
+      .eq("order_id", data.order_id);
+    if (error) throw dbError(error);
+    await applyWalletCredit(supabaseAdmin, {
+      user_id: context.userId,
+      amount_won: -session.amount_won,
+      kind: "withdraw",
+      session_id: data.order_id,
+      note: `point withdraw: ${data.order_id}`,
+    });
+    return { status: "completed", order_id: data.order_id };
+  });
+
+export const confirmPhotoPurchase = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ session_id: z.string().uuid(), payment_key: z.string().optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const completed = await completePurchaseSession(data.session_id, { supabaseAdmin, userId: context.userId }, true);
+    const photos = (completed.photos ?? []) as Array<{ id: string; original_path: string }>;
+    const { data: urls, error } = await supabaseAdmin.storage
+      .from("photos-original")
+      .createSignedUrls(photos.map((p) => p.original_path), 60 * 10);
+    if (error) throw dbError(error);
+    const map: Record<string, string | null> = {};
+    photos.forEach((photo: { id: string }, i: number) => {
+      map[photo.id] = urls?.[i]?.signedUrl ?? null;
+    });
+    return { status: "completed", session_id: data.session_id, photos: map };
+  });
+
+function photoRowsOverLimit(count: number) {
+  return count <= 0 || count > MAX_BATCH_SIZE;
+}
+
+function getPhotoResultMap(
+  rows: Array<{ id: string; status: string; original_path: string }>,
+  urls: Array<{ signedUrl: string | null }> | null,
+) {
+  const map: Record<string, string | null> = {};
+  rows.forEach((r, i) => {
+    map[r.id] = urls?.[i]?.signedUrl ?? null;
+  });
+  return map;
+}
 
 // 묶음 상세 — 받는 사람이 한 묶음(batch)의 사진들을 슬라이더로 보며 고른다.
 export const getBatch = createServerFn({ method: "POST" })
@@ -308,6 +734,7 @@ export const getBatch = createServerFn({ method: "POST" })
       preview_url: wm[i]?.signedUrl ?? null,
       original_url: ogByIdx[i] ?? null,
     }));
+    for (const item of list) await logPhotoAccess(context.userId, item.id, "preview");
     return { uploader, photos: items };
   });
 
@@ -371,34 +798,51 @@ export const updateBatchPrice = createServerFn({ method: "POST" })
 // 묶음에서 선택한 사진들만 결제. 항목별로 검증 후 성공분만 반환.
 export const purchasePhotos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(50) }).parse(input))
+  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(20) }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const results: { id: string; original_url: string | null }[] = [];
-    for (const id of data.ids) {
-      const { data: photo, error } = await supabaseAdmin
-        .from("photos")
-        .select("id, uploader_id, subject_id, price_won, status, original_path")
-        .eq("id", id)
-        .single();
-      if (error || !photo) continue;
-      if (photo.subject_id !== context.userId || photo.status !== "available") continue;
-      const earning = Math.floor(photo.price_won * EARNING_RATE);
-      const { error: insErr } = await supabaseAdmin.from("purchases").insert({
-        photo_id: photo.id,
-        buyer_id: context.userId,
-        uploader_id: photo.uploader_id,
-        amount_won: photo.price_won,
-        uploader_earning_won: earning,
+    const uniqIds = Array.from(new Set(data.ids));
+    const { data: rows, error } = await supabaseAdmin
+      .from("photos")
+      .select("id, uploader_id, subject_id, price_won, status, original_path")
+      .in("id", uniqIds)
+      .eq("subject_id", context.userId)
+      .eq("status", "available");
+    if (error) throw dbError(error);
+    if (photoRowsOverLimit(rows?.length ?? 0)) throw new Error("요청 수가 허용 범위를 초과했어요.");
+    const targets = rows ?? [];
+    if (targets.length === 0) throw new Error("소장할 수 있는 사진이 없어요");
+
+    const session = await createPurchaseSessionRows(
+      supabaseAdmin,
+      context.userId,
+      targets.map((p) => ({ id: p.id, price_won: p.price_won, uploader_id: p.uploader_id })),
+    );
+
+    if (PAYMENT_MODE === "mock") {
+      const completed = await completePurchaseSession(session.session_id, { supabaseAdmin, userId: context.userId }, true);
+      const originals = completed.photos ?? targets;
+      const signed = (await supabaseAdmin.storage.from("photos-original").createSignedUrls(
+        originals.map((p: { original_path: string }) => p.original_path),
+        60 * 10,
+      )).data ?? [];
+      return {
         status: "completed",
-      });
-      if (insErr) continue;
-      await supabaseAdmin.from("photos").update({ status: "sold" }).eq("id", photo.id);
-      const { data: signed } = await supabaseAdmin.storage.from("photos-original").createSignedUrl(photo.original_path, 60 * 10);
-      results.push({ id: photo.id, original_url: signed?.signedUrl ?? null });
+        session_id: session.session_id,
+        results: Object.entries(getPhotoResultMap(originals as Array<{ id: string; status: string; original_path: string }>, signed)).map(
+          ([id, original_url]) => ({ id, original_url }),
+        ),
+      };
     }
-    if (results.length === 0) throw new Error("소장할 수 있는 사진이 없어요");
-    return { results };
+
+    return {
+      status: "pending",
+      session_id: session.session_id,
+      order_id: session.order_id,
+      order_name: `${DEFAULT_ORDER_NAME} (${targets.length}장)`,
+      amount_won: session.total_amount_won,
+      payment: getTossConfig(),
+    };
   });
 
 export const reportPhoto = createServerFn({ method: "POST" })
@@ -487,13 +931,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .single();
     if (error) throw dbError(error);
 
-    // 포인트 잔액 = 적립된 업로더 수익 합계 (출금 기능 연동 전 단순 집계)
-    const { data: earnRows } = await context.supabase
-      .from("purchases")
-      .select("uploader_earning_won")
-      .eq("uploader_id", context.userId)
-      .eq("status", "completed");
-    const point_balance = (earnRows ?? []).reduce((s, r) => s + (r.uploader_earning_won ?? 0), 0);
+    const point_balance = await getWalletBalance(context.supabase, context.userId);
 
     return { profile: data, point_balance };
   });
