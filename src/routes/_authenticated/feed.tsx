@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ImageOff, Play, Inbox, Send, Search, BookmarkCheck, Lock, Sparkles } from "lucide-react";
+import { ImageOff, Play, Inbox, Send, Search, BookmarkCheck, Lock } from "lucide-react";
 import { MOCK_PHOTOS, usePurchased, isNew, relativeTime, formatWon } from "@/lib/mock-feed";
 
 export const Route = createFileRoute("/_authenticated/feed")({
@@ -74,7 +74,7 @@ function FeedPage() {
           <p className="mt-1 text-sm text-muted-foreground">{tab === "received" ? "친구가 보내면 여기로 도착해요." : "마음에 든 컷을 결제하면 모여요."}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
+        <div className="grid grid-cols-2 gap-2">
           {photos.map((p) => {
             const owned = purchased.has(p.id);
             const fresh = !owned && isNew(p);
@@ -83,38 +83,33 @@ function FeedPage() {
                 key={p.id}
                 to="/photo/$id"
                 params={{ id: p.id }}
-                className="group relative block overflow-hidden rounded-md bg-secondary"
+                className="group relative block overflow-hidden rounded-xl bg-secondary"
               >
-                <div className="relative aspect-square overflow-hidden">
+                <div className="relative aspect-[4/5] overflow-hidden">
                   <img src={p.preview_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                  {/* dense watermark overlay (visual only, not for new owned items) */}
                   {!owned && (
-                    <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[repeating-linear-gradient(-20deg,transparent_0_20px,rgba(255,255,255,0.18)_20px_22px)]">
-                      <span className="rotate-[-12deg] text-[9px] font-bold tracking-widest text-white/90 mix-blend-overlay">SNAPPY</span>
-                    </div>
-                  )}
-                  {fresh && (
-                    <span className="absolute right-1 bottom-1 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground shadow">
-                      <Sparkles className="h-2.5 w-2.5" />NEW
-                    </span>
+                    <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(-20deg,transparent_0_24px,rgba(255,255,255,0.16)_24px_26px)]" />
                   )}
                   {p.is_video && (
-                    <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-foreground/80 text-background">
-                      <Play className="h-2.5 w-2.5" />
+                    <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-foreground/80 text-background">
+                      <Play className="h-3 w-3" />
                     </span>
                   )}
-                  {owned ? (
-                    <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
-                      <BookmarkCheck className="h-2.5 w-2.5" />보관
-                    </span>
-                  ) : (
-                    <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background">
-                      <Lock className="h-2.5 w-2.5" />{formatWon(p.price_won)}
-                    </span>
+                  {fresh && (
+                    <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-white/80" />
                   )}
-                  <span className="absolute bottom-1 left-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur">
-                    @{p.uploader.handle} · {relativeTime(p.received_at)}
-                  </span>
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/65 via-black/30 to-transparent px-2.5 py-2">
+                    <span className="truncate text-[11px] font-semibold text-white">@{p.uploader.handle}</span>
+                    {owned ? (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-foreground">
+                        <BookmarkCheck className="h-2.5 w-2.5" />보관
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-foreground">
+                        <Lock className="h-2.5 w-2.5" />{formatWon(p.price_won)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Link>
             );

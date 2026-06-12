@@ -27,7 +27,7 @@ function Index() {
       <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-accent/60 blur-3xl opacity-70" />
       <div aria-hidden className="pointer-events-none absolute top-40 -left-24 h-80 w-80 rounded-full bg-sky blur-3xl opacity-80" />
 
-      <header className="relative mx-auto flex max-w-md items-center justify-between px-5 py-4">
+      <header className="relative mx-auto flex max-w-md items-center justify-between px-4 py-4">
         <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold">
           <span className="grid h-8 w-8 place-items-center rounded-2xl bg-primary text-primary-foreground">
             <Camera className="h-4 w-4" />
@@ -39,7 +39,7 @@ function Index() {
         </Link>
       </header>
 
-      <main className="relative mx-auto max-w-md px-5 pb-24">
+      <main className="relative mx-auto max-w-md px-4 pb-24">
         {/* Hero with overlapping polaroid stack — distinct from in-app grid */}
         <section className="pt-2">
           <div className="relative mx-auto h-[280px] w-full">
