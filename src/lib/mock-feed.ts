@@ -91,8 +91,7 @@ export function relativeTime(iso: string) {
   return `${d}일 전`;
 }
 
-// "New" = received within the last 24h AND not purchased yet.
-export function isNew(p: MockPhoto, purchased: Set<string>) {
-  if (purchased.has(p.id)) return false;
+// "New" = received within the last 24 hours (purely a badge — old photos stay in the inbox forever).
+export function isNew(p: MockPhoto) {
   return Date.now() - new Date(p.received_at).getTime() < 24 * 60 * 60 * 1000;
 }
