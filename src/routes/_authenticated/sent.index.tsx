@@ -59,27 +59,27 @@ function SentPage() {
         <h1 className="font-display mt-2 text-3xl font-extrabold">내가 보낸 컷</h1>
       </div>
       {/* 통계 */}
-      <div className="relative overflow-hidden rounded-[1.5rem] border border-white/60 bg-gradient-to-br from-brand-soft via-card to-accent/30 p-5 shadow-sm backdrop-blur">
+      <div className="relative overflow-hidden rounded-[1.5rem] border border-white/60 bg-gradient-to-br from-brand-soft via-card to-accent/30 px-5 py-3.5 shadow-sm backdrop-blur">
         <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/10 blur-2xl" />
         <div className="grid grid-cols-2 divide-x divide-border/50">
           <div className="pr-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">보낸 컷</p>
-            <p className="font-display mt-1.5 text-3xl font-extrabold leading-none">
+            <p className="font-display mt-1 text-2xl font-extrabold leading-none">
               {sentTotal}
               <span className="ml-1 text-sm font-semibold text-muted-foreground">장</span>
             </p>
           </div>
           <div className="pl-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">소장됨</p>
-            <p className="font-display mt-1.5 text-3xl font-extrabold leading-none">
+            <p className="font-display mt-1 flex items-baseline gap-2 text-2xl font-extrabold leading-none">
               {soldTotal}
-              <span className="ml-1 text-sm font-semibold text-muted-foreground">건</span>
+              <span className="text-sm font-semibold text-muted-foreground">건</span>
+              {sentTotal > 0 && (
+                <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                  {Math.round(soldTotal / sentTotal * 100)}%
+                </span>
+              )}
             </p>
-            {sentTotal > 0 && (
-              <span className="mt-1 inline-block rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                {Math.round(soldTotal / sentTotal * 100)}%
-              </span>
-            )}
           </div>
         </div>
       </div>
