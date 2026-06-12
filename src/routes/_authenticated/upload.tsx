@@ -1,4 +1,4 @@
-import { formatWon } from "@/lib/mock-feed";
+import { formatWon } from "@/lib/format";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -6,13 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { searchProfiles, createPhoto, getMyProfile } from "@/lib/photos.functions";
+import { searchProfiles, createPhoto, getMyProfile, getFriends, sendFriendRequest } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { watermarkImage, compressOriginal } from "@/lib/watermark";
 import { toast } from "sonner";
 import { Search, Upload, X, Film, Image as ImageIcon, Play, Lock, UserPlus, Users } from "lucide-react";
-import { useFriendsStore } from "@/lib/friends-mock";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({ meta: [{ title: "사진 보내기 — Snappy" }] }),
@@ -26,16 +25,21 @@ function UploadPage() {
   const search = useServerFn(searchProfiles);
   const create = useServerFn(createPhoto);
   const fetchProfile = useServerFn(getMyProfile);
+  const friendsFn = useServerFn(getFriends);
+  const sendReq = useServerFn(sendFriendRequest);
+  const qc = useQueryClient();
   const { data: meData } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const myHandle = meData?.profile?.handle as string | undefined;
-  const { friends, isFriend, addFriend } = useFriendsStore();
+  const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
+  const friends = friendsData?.friends ?? [];
+  const isFriend = (id: string) => friends.some((f) => f.id === id);
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
   const [selected, setSelected] = useState<Profile | null>(null);
   const [mode, setMode] = useState<"friends" | "id">(friends.length > 0 ? "friends" : "id");
   const [files, setFiles] = useState<File[]>([]);
-  const [price, setPrice] = useState(5000); // 원
+  const [price, setPrice] = useState(3000); // 원 (기본값)
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -50,10 +54,8 @@ function UploadPage() {
       toast.error("받는 사람과 사진을 선택해주세요");
       return;
     }
-    if (!isFriend(selected.id)) {
-      toast.error("친구만 바로 보낼 수 있어요. 받는 사람이 '받기 설정'을 열어두면 보낼 수 있어요.");
-      return;
-    }
+    // 전송 권한(친구 또는 받기설정)은 서버 createPhoto에서 강제. 친구가 아니어도
+    // 상대가 받기 설정을 열어둔 경우 전송되므로 클라이언트에서 막지 않는다.
     setBusy(true);
     try {
       const { data: userResp } = await supabase.auth.getUser();
@@ -82,8 +84,7 @@ function UploadPage() {
             subject_id: selected.id,
             original_path: originalPath,
             watermarked_path: watermarkedPath,
-            // backend still expects cents; convert KRW preview to legacy unit (placeholder).
-            price_cents: Math.max(100, Math.round(price / 13)),
+            price_won: price,
             note: note || undefined,
           },
         });
@@ -102,17 +103,25 @@ function UploadPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
         <span className="chip">보내기</span>
-        <h1 className="font-display mt-2 text-3xl font-extrabold">사진·영상 보내기</h1>
+        <h1 className="font-display mt-2 text-3xl font-extrabold">사진 보내기</h1>
         <p className="mt-1 text-sm text-muted-foreground">친구에게는 바로, 모르는 사람은 상대가 받기 설정을 열어야 보낼 수 있어요.</p>
       </header>
 
       <section className="rounded-[1.75rem] border border-white/70 bg-card/90 p-6 backdrop-blur">
-        <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">1 · 받는 사람</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">1 · 받는 사람</Label>
+          {!selected && (
+            <div className="inline-flex shrink-0 rounded-full bg-secondary p-1 text-xs font-semibold">
+              <button type="button" onClick={() => setMode("friends")} className={`rounded-full px-3 py-1.5 transition ${mode === "friends" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>친구</button>
+              <button type="button" onClick={() => setMode("id")} className={`rounded-full px-3 py-1.5 transition ${mode === "id" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>@ID로 보내기</button>
+            </div>
+          )}
+        </div>
         {selected ? (
-          <>
-            <div className="mt-3 flex items-center justify-between rounded-2xl bg-secondary p-3">
+          <div className="mt-4">
+            <div className="flex items-center justify-between rounded-2xl bg-secondary p-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-sky-soft font-display font-bold">{selected.display_name?.[0] ?? "?"}</div>
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-brand-soft font-display font-bold">{selected.display_name?.[0] ?? "?"}</div>
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{selected.display_name}</p>
                   <p className="truncate text-xs text-muted-foreground">@{selected.handle}</p>
@@ -128,26 +137,22 @@ function UploadPage() {
                   <Lock className="mt-0.5 h-3.5 w-3.5 text-destructive" />
                   <div>
                     <p className="font-semibold">친구가 아니에요</p>
-                    <p className="mt-0.5 text-muted-foreground">상대가 '받기 설정'(10분)을 열어둔 경우에만 보낼 수 있어요.</p>
+                    <p className="mt-0.5 text-muted-foreground">상대가 '받기 설정'을 열어둔 경우에만 전송돼요. 친구가 되면 언제든 보낼 수 있어요.</p>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" className="shrink-0 rounded-full" onClick={() => { addFriend({ id: selected.id, handle: selected.handle, display_name: selected.display_name }); toast.success("친구 추가됨"); }}>
-                  <UserPlus className="mr-1 h-3.5 w-3.5" />친구 추가
+                <Button size="sm" variant="outline" className="shrink-0 rounded-full" onClick={async () => { const r = await sendReq({ data: { to_id: selected.id } }); toast.success(r.status === "accepted" ? "친구가 됐어요!" : "친구 요청을 보냈어요"); qc.invalidateQueries({ queryKey: ["friends"] }); }}>
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />친구 요청
                 </Button>
               </div>
             )}
-          </>
+          </div>
         ) : (
-          <>
-            <div className="mt-3 inline-flex rounded-full bg-secondary p-1 text-xs font-semibold">
-              <button type="button" onClick={() => setMode("friends")} className={`rounded-full px-3 py-1.5 transition ${mode === "friends" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>친구</button>
-              <button type="button" onClick={() => setMode("id")} className={`rounded-full px-3 py-1.5 transition ${mode === "id" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>@ID로 보내기</button>
-            </div>
+          <div className="mt-4">
             {mode === "friends" ? (
               friends.length === 0 ? (
-                <p className="mt-4 text-xs text-muted-foreground">아직 친구가 없어요. @ID로 검색해서 추가해보세요.</p>
+                <p className="text-xs text-muted-foreground">아직 친구가 없어요. @ID로 검색해서 추가해보세요.</p>
               ) : (
-                <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                   {friends.map((f) => (
                     <button
                       key={f.id}
@@ -155,7 +160,7 @@ function UploadPage() {
                       onClick={() => setSelected({ id: f.id, handle: f.handle, display_name: f.display_name, avatar_url: null })}
                       className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 shadow-sm"
                     >
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-sky-soft font-display font-bold">{f.display_name?.[0] ?? "?"}</div>
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-brand-soft font-display font-bold">{f.display_name?.[0] ?? "?"}</div>
                       <span className="max-w-[64px] truncate text-[11px] font-semibold">@{f.handle}</span>
                     </button>
                   ))}
@@ -163,7 +168,7 @@ function UploadPage() {
               )
             ) : (
               <>
-                <div className="mt-3 flex gap-2">
+                <div className="flex gap-2">
                   <Input placeholder="@핸들 또는 이름" className="rounded-full" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doSearch())} />
                   <Button type="button" className="rounded-full" onClick={doSearch}><Search className="h-4 w-4" /></Button>
                 </div>
@@ -183,23 +188,23 @@ function UploadPage() {
                 )}
               </>
             )}
-          </>
+          </div>
         )}
       </section>
 
       <section className="rounded-[1.75rem] border border-white/70 bg-card/90 p-6 backdrop-blur">
-        <Label htmlFor="files" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">2 · 사진 / 영상</Label>
-        <label htmlFor="files" className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-accent/50 bg-sky/60 px-6 py-10 text-center transition hover:bg-sky">
+        <Label htmlFor="files" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">2 · 사진</Label>
+        <label htmlFor="files" className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-accent/50 bg-brand/60 px-6 py-10 text-center transition hover:bg-brand">
           <div className="flex gap-1.5">
             <span className="grid h-9 w-9 place-items-center rounded-2xl bg-white shadow-sm"><ImageIcon className="h-4 w-4" /></span>
             <span className="grid h-9 w-9 place-items-center rounded-2xl bg-white shadow-sm"><Film className="h-4 w-4" /></span>
           </div>
           <p className="mt-3 font-display font-bold">탭해서 골라요</p>
-          <p className="mt-1 text-xs text-muted-foreground">사진·동영상 여러 개 OK · 자동 워터마크</p>
+          <p className="mt-1 text-xs text-muted-foreground">사진 여러 개 OK · 자동 워터마크</p>
         </label>
-        <Input id="files" type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+        <Input id="files" type="file" multiple accept="image/*" className="hidden" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
         {files.length > 0 && (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-3 gap-2">
             {files.map((f, i) => {
               const url = URL.createObjectURL(f);
               const isVid = f.type.startsWith("video/");
@@ -228,13 +233,13 @@ function UploadPage() {
         </div>
         <div>
           <Label htmlFor="note" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">메시지 (선택)</Label>
-          <Textarea id="note" maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} className="mt-2 rounded-2xl" placeholder="짧은 메시지" />
+          <Textarea id="note" maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} className="mt-2 rounded-2xl px-4 py-3" placeholder="짧은 메시지" />
         </div>
       </section>
 
       <Button size="lg" className="w-full rounded-full text-base" onClick={doUpload} disabled={busy}>
         <Upload className="mr-2 h-4 w-4" />
-        {busy ? "보내는 중…" : "톡 보내기"}
+        {busy ? "보내는 중…" : "사진 보내기"}
       </Button>
     </div>
   );

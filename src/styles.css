@@ -20,9 +20,9 @@
   --radius-4xl: calc(var(--radius) + 16px);
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --color-sky: var(--sky);
-  --color-sky-soft: var(--sky-soft);
-  --color-sky-deep: var(--sky-deep);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-deep: var(--brand-deep);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -82,10 +82,10 @@
   --border: oklch(0.92 0 0);
   --input: oklch(0.93 0 0);
   --ring: oklch(0.78 0.18 128);
-  /* named tokens — kept as `sky-*` for backwards compat, now neutral/lime */
-  --sky: oklch(0.95 0.06 128);
-  --sky-soft: oklch(0.98 0.03 128);
-  --sky-deep: oklch(0.18 0 0);
+  /* brand tonal tokens — lime tints + a deep near-black for gradient depth */
+  --brand: oklch(0.95 0.06 128);
+  --brand-soft: oklch(0.98 0.03 128);
+  --brand-deep: oklch(0.18 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -188,7 +188,7 @@
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: var(--color-sky);
+  background: var(--color-brand);
   color: var(--color-secondary-foreground);
   border: 1px solid color-mix(in oklab, var(--color-accent) 30%, transparent);
 }

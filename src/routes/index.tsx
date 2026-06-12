@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Camera, Play, Send, ArrowRight, Lock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Snappy — 친구들이 찍어준 스냅샷" },
-      { name: "description", content: "친구들이 찍어준 사진·영상을 피드로 받고, 마음에 드는 컷만 골라 구매하세요." },
+      { name: "description", content: "친구들이 찍어준 사진을 피드로 받고, 마음에 드는 컷만 골라 구매하세요." },
       { property: "og:title", content: "Snappy — 친구들이 찍어준 스냅샷" },
       { property: "og:description", content: "ID 검색으로 빠르게 보내고, 피드에서 골라 받는 캐주얼 포토 마켓." },
     ],
@@ -16,23 +17,20 @@ export const Route = createFileRoute("/")({
 
 // Sample feed preview — overlapping polaroid stack to clearly differ from the in-app grid.
 const preview = [
-  { tag: "@yuna", tone: "from-sky-soft to-sky", rot: "-rotate-6 -translate-x-6", z: "z-10", video: false },
-  { tag: "@minho", tone: "from-sky to-accent", rot: "rotate-3 translate-x-2", z: "z-20", video: true },
-  { tag: "@jiwoo", tone: "from-accent/70 to-sky-deep/40", rot: "rotate-12 translate-x-10 translate-y-3", z: "z-0", video: false },
+  { tag: "@yuna", tone: "from-brand-soft to-brand", rot: "-rotate-6 -translate-x-6", z: "z-10", video: false },
+  { tag: "@minho", tone: "from-brand to-accent", rot: "rotate-3 translate-x-2", z: "z-20", video: false },
+  { tag: "@jiwoo", tone: "from-accent/70 to-brand-deep/40", rot: "rotate-12 translate-x-10 translate-y-3", z: "z-0", video: false },
 ];
 
 function Index() {
   return (
     <div className="relative min-h-screen overflow-hidden text-foreground">
       <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-accent/60 blur-3xl opacity-70" />
-      <div aria-hidden className="pointer-events-none absolute top-40 -left-24 h-80 w-80 rounded-full bg-sky blur-3xl opacity-80" />
+      <div aria-hidden className="pointer-events-none absolute top-40 -left-24 h-80 w-80 rounded-full bg-brand blur-3xl opacity-80" />
 
       <header className="relative mx-auto flex max-w-md items-center justify-between px-4 py-4">
-        <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="grid h-8 w-8 place-items-center rounded-2xl bg-primary text-primary-foreground">
-            <Camera className="h-4 w-4" />
-          </span>
-          snappy
+        <Link to="/">
+          <Logo className="text-lg" />
         </Link>
         <Link to="/auth" className="text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline">
           로그인
@@ -47,7 +45,7 @@ function Index() {
               <div
                 key={c.tag}
                 style={{ left: `${10 + i * 22}%`, top: `${10 + (i % 2) * 18}px` }}
-                className={`absolute h-[210px] w-[150px] rounded-[1.25rem] border-4 border-white bg-gradient-to-br ${c.tone} ${c.rot} ${c.z} shadow-[0_20px_40px_-15px_rgba(56,189,248,0.55)] transition`}
+                className={`absolute h-[210px] w-[150px] rounded-[1.25rem] border-4 border-white bg-gradient-to-br ${c.tone} ${c.rot} ${c.z} shadow-[0_20px_40px_-15px_rgba(10,10,10,0.18)] transition`}
               >
                 <div className="absolute inset-0 rounded-[0.85rem] bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.55),transparent_55%)]" />
                 <div className="absolute left-2 top-2 chip !px-1.5 !py-0.5 !text-[10px] !bg-white/90">
@@ -59,7 +57,7 @@ function Index() {
 
           <h1 className="font-display mt-2 text-[2.5rem] font-extrabold leading-[1.05]">
             친구들이 찍어준<br />
-            <span className="bg-gradient-to-r from-primary to-sky-deep bg-clip-text text-transparent">스냅을 모아요.</span>
+            <span className="box-decoration-clone rounded-xl bg-accent/70 px-2 text-foreground">스냅을 모아요.</span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             ID로 빠르게 보내고, 받은 컷에서 마음에 드는 것만 골라 원본을 가져가세요.
@@ -92,7 +90,7 @@ function Index() {
           </p>
         </div>
 
-        <footer className="mt-10 text-center text-xs text-muted-foreground">made by snappy</footer>
+        <footer className="mt-10 text-center text-xs text-muted-foreground">made by Snappy</footer>
       </main>
     </div>
   );

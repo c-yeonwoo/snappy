@@ -20,7 +20,7 @@ export type Database = {
           id: string
           note: string | null
           original_path: string
-          price_cents: number
+          price_won: number
           status: Database["public"]["Enums"]["photo_status"]
           subject_id: string
           uploader_id: string
@@ -31,7 +31,7 @@ export type Database = {
           id?: string
           note?: string | null
           original_path: string
-          price_cents?: number
+          price_won?: number
           status?: Database["public"]["Enums"]["photo_status"]
           subject_id: string
           uploader_id: string
@@ -42,7 +42,7 @@ export type Database = {
           id?: string
           note?: string | null
           original_path?: string
-          price_cents?: number
+          price_won?: number
           status?: Database["public"]["Enums"]["photo_status"]
           subject_id?: string
           uploader_id?: string
@@ -50,8 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: Database["public"]["Enums"]["friendship_status"]
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          allow_until: string | null
           avatar_url: string | null
           created_at: string
           display_name: string
@@ -60,6 +85,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_until?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name: string
@@ -68,6 +94,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_until?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string
@@ -79,33 +106,33 @@ export type Database = {
       }
       purchases: {
         Row: {
-          amount_cents: number
+          amount_won: number
           buyer_id: string
           created_at: string
           id: string
           photo_id: string
           status: Database["public"]["Enums"]["purchase_status"]
-          uploader_earning_cents: number
+          uploader_earning_won: number
           uploader_id: string
         }
         Insert: {
-          amount_cents: number
+          amount_won: number
           buyer_id: string
           created_at?: string
           id?: string
           photo_id: string
           status?: Database["public"]["Enums"]["purchase_status"]
-          uploader_earning_cents: number
+          uploader_earning_won: number
           uploader_id: string
         }
         Update: {
-          amount_cents?: number
+          amount_won?: number
           buyer_id?: string
           created_at?: string
           id?: string
           photo_id?: string
           status?: Database["public"]["Enums"]["purchase_status"]
-          uploader_earning_cents?: number
+          uploader_earning_won?: number
           uploader_id?: string
         }
         Relationships: [
@@ -158,6 +185,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      friendship_status: "pending" | "accepted"
       photo_status: "available" | "sold" | "removed"
       purchase_status: "pending" | "completed" | "failed"
     }
@@ -287,6 +315,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      friendship_status: ["pending", "accepted"],
       photo_status: ["available", "sold", "removed"],
       purchase_status: ["pending", "completed", "failed"],
     },

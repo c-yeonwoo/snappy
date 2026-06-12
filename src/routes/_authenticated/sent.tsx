@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMySent } from "@/lib/photos.functions";
-import { formatWon } from "@/lib/mock-feed";
+import { formatWon } from "@/lib/format";
 import { useEffect, useState } from "react";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Frontend-only price overrides until backend exposes an update endpoint.
@@ -27,6 +27,7 @@ function SentPage() {
   const fn = useServerFn(getMySent);
   const { data, isLoading } = useQuery({ queryKey: ["sent"], queryFn: () => fn() });
   const [overrides, setOverrides] = useState<Record<string, number>>(() => readOverrides());
+  const [tab, setTab] = useState<"sent" | "sales">("sent");
   useEffect(() => {
     const sync = () => setOverrides(readOverrides());
     window.addEventListener("snappy:price", sync);
@@ -35,10 +36,9 @@ function SentPage() {
 
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   const photos = data?.photos ?? [];
-  const earningsCents = data?.earnings_cents ?? 0;
-  // backend earnings are in USD cents today; until the server switches to KRW
-  // we render the design preview as "earnings count" only and label in 원.
-  const earningsWon = Math.round(earningsCents * 13); // rough preview scale
+  const earningsWon = data?.earnings_won ?? 0;
+  const sold = photos.filter((p) => p.status === "sold");
+  const priceOf = (p: { id: string; price_won: number }) => overrides[p.id] ?? p.price_won;
 
   return (
     <div className="space-y-6">
@@ -54,45 +54,83 @@ function SentPage() {
         </div>
       </div>
 
-      {photos.length === 0 ? (
+      {/* Tabs */}
+      <div className="inline-flex w-full rounded-full border border-border bg-card/80 p-1 backdrop-blur">
+        {(["sent", "sales"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${tab === t ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}
+          >
+            {t === "sent" ? `보낸 사진 · ${photos.length}` : `판매 히스토리 · ${sold.length}`}
+          </button>
+        ))}
+      </div>
+
+      {tab === "sent" ? (
+        photos.length === 0 ? (
+          <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
+            <p className="text-muted-foreground">아직 보낸 컷이 없어요.</p>
+            <Link to="/upload" className="mt-3 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">보내러 가기</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5">
+            {photos.map((p) => {
+              const statusMap = {
+                sold: { label: "판매", cls: "!bg-primary !text-primary-foreground !border-primary/40" },
+                removed: { label: "삭제", cls: "!bg-destructive !text-destructive-foreground !border-destructive/40" },
+                available: { label: "대기 중", cls: "" },
+              } as const;
+              const s = statusMap[p.status as keyof typeof statusMap] ?? statusMap.available;
+              const currentPrice = priceOf(p);
+              const editable = p.status !== "sold" && p.status !== "removed";
+              return (
+                <div key={p.id} className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-card shadow-[0_15px_40px_-20px_rgba(10,10,10,0.15)]">
+                  <div className="relative aspect-square bg-secondary">
+                    {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
+                    <span className={`absolute left-2.5 top-2.5 chip ${s.cls}`}>{s.label}</span>
+                    <PriceBadge
+                      price={currentPrice}
+                      editable={editable}
+                      onSave={(v) => {
+                        const next = { ...readOverrides(), [p.id]: v };
+                        writeOverrides(next);
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 text-xs">
+                    <span className="text-muted-foreground">to <b className="text-foreground">@{p.subject?.handle ?? "?"}</b></span>
+                    {p.status === "sold" && <span className="font-semibold text-foreground">+{formatWon(Math.round(currentPrice * 0.7))}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : sold.length === 0 ? (
         <div className="rounded-[1.75rem] border border-dashed border-border bg-card/80 p-12 text-center">
-          <p className="text-muted-foreground">아직 보낸 컷이 없어요.</p>
-          <Link to="/upload" className="mt-3 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">보내러 가기</Link>
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-secondary"><Coins className="h-6 w-6 text-foreground" /></div>
+          <h2 className="font-display mt-4 text-lg font-bold">아직 판매가 없어요</h2>
+          <p className="mt-1 text-sm text-muted-foreground">친구가 내 컷을 결제하면 여기에 기록돼요.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-          {photos.map((p) => {
-            const statusMap = {
-              sold: { label: "판매", cls: "!bg-primary !text-primary-foreground !border-primary/40" },
-              removed: { label: "삭제", cls: "!bg-destructive !text-destructive-foreground !border-destructive/40" },
-              available: { label: "대기 중", cls: "" },
-            } as const;
-            const s = statusMap[p.status as keyof typeof statusMap] ?? statusMap.available;
-            const basePrice = Math.round(p.price_cents * 13);
-            const currentPrice = overrides[p.id] ?? basePrice;
-            const editable = p.status !== "sold" && p.status !== "removed";
+        <ul className="space-y-2">
+          {sold.map((p) => {
+            const earning = Math.round(priceOf(p) * 0.7);
             return (
-              <div key={p.id} className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-card shadow-[0_15px_40px_-20px_rgba(125,160,200,0.4)]">
-                <div className="relative aspect-square bg-secondary">
+              <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 p-2.5 backdrop-blur">
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
                   {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
-                  <span className={`absolute left-2.5 top-2.5 chip ${s.cls}`}>{s.label}</span>
-                  <PriceBadge
-                    price={currentPrice}
-                    editable={editable}
-                    onSave={(v) => {
-                      const next = { ...readOverrides(), [p.id]: v };
-                      writeOverrides(next);
-                    }}
-                  />
                 </div>
-                <div className="flex items-center justify-between p-3 text-xs">
-                  <span className="text-muted-foreground">to <b className="text-foreground">@{p.subject?.handle ?? "?"}</b></span>
-                  {p.status === "sold" && <span className="font-semibold text-foreground">+{formatWon(Math.round(currentPrice * 0.7))}</span>}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold"><b>@{p.subject?.handle ?? "?"}</b> 님이 구매</p>
+                  <p className="text-[11px] text-muted-foreground">판매가 {formatWon(priceOf(p))}</p>
                 </div>
-              </div>
+                <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatWon(earning)}</span>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );

@@ -1,7 +1,11 @@
-import { createFileRoute, Outlet, redirect, Link, useRouter, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, Link, useLocation } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Camera, Inbox, ImagePlus, Images, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Inbox, ImagePlus, Images, User, Bell } from "lucide-react";
+import { getFriends, getMyFeed } from "@/lib/photos.functions";
+import { isNew } from "@/lib/format";
+import { Logo } from "@/components/logo";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -14,12 +18,14 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthedLayout() {
-  const router = useRouter();
   const loc = useLocation();
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.navigate({ to: "/" });
-  }
+  const friendsFn = useServerFn(getFriends);
+  const feedFn = useServerFn(getMyFeed);
+  const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
+  const { data: feedData } = useQuery({ queryKey: ["feed"], queryFn: () => feedFn() });
+  const notifCount =
+    (friendsData?.incoming?.length ?? 0) +
+    (feedData?.photos ?? []).filter((p) => p.status === "available" && isNew(p.created_at)).length;
   const tabs = [
     { to: "/feed", icon: Inbox, label: "받은함" },
     { to: "/upload", icon: ImagePlus, label: "보내기" },
@@ -28,30 +34,25 @@ function AuthedLayout() {
   ] as const;
   const active = (to: string) => loc.pathname === to;
   return (
-    <div className="min-h-screen pb-24 sm:pb-0">
+    <div className="min-h-screen pb-24">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link to="/feed" className="flex items-center gap-2 font-display font-bold">
-            <span className="grid h-8 w-8 place-items-center rounded-2xl bg-foreground text-background">
-              <Camera className="h-4 w-4" />
-            </span>
-            Snappy
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
+          <Link to="/feed">
+            <Logo />
           </Link>
-          <nav className="hidden items-center gap-1 sm:flex">
-            {tabs.map((t) => (
-              <Link key={t.to} to={t.to}>
-                <Button variant={active(t.to) ? "default" : "ghost"} size="sm" className="rounded-full">
-                  <t.icon className="mr-1.5 h-4 w-4" />{t.label}
-                </Button>
-              </Link>
-            ))}
-          </nav>
-          <Button variant="ghost" size="sm" onClick={signOut} className="rounded-full text-muted-foreground">로그아웃</Button>
+          <Link to="/notifications" aria-label="알림" className="relative grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition active:scale-95 hover:bg-secondary">
+            <Bell className="h-5 w-5" />
+            {notifCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+                {notifCount > 9 ? "9+" : notifCount}
+              </span>
+            )}
+          </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10"><Outlet /></main>
-      {/* bottom tab bar (mobile) */}
-      <nav className="fixed inset-x-0 bottom-3 z-30 mx-auto flex max-w-xs items-center justify-around gap-1 rounded-full border border-white/70 bg-card/90 px-2 py-1.5 shadow-[0_20px_50px_-20px_rgba(125,160,200,0.5)] backdrop-blur-xl sm:hidden">
+      <main className="mx-auto max-w-md px-4 py-6"><Outlet /></main>
+      {/* bottom tab bar (mobile-only nav) */}
+      <nav className="fixed inset-x-0 bottom-3 z-30 mx-auto flex max-w-xs items-center justify-around gap-1 rounded-full border border-white/70 bg-card/90 px-2 py-1.5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.18)] backdrop-blur-xl">
         {tabs.map((t) => (
           <Link key={t.to} to={t.to} className={`flex flex-1 flex-col items-center rounded-full px-2 py-1.5 text-[10px] font-semibold ${active(t.to) ? "bg-foreground text-background" : "text-muted-foreground"}`}>
             <t.icon className="h-4 w-4" />{t.label}

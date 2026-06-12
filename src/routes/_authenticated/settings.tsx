@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { getMyProfile, updateMyProfile } from "@/lib/photos.functions";
+import { getMyProfile, updateMyProfile, setAllowWindow } from "@/lib/photos.functions";
 import { toast } from "sonner";
-import { useFriendsStore, formatRemaining } from "@/lib/friends-mock";
+import { formatRemaining, isWindowOpen } from "@/lib/format";
+import { useNow } from "@/hooks/use-now";
 import { ArrowLeft, Radio, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -19,11 +20,15 @@ export const Route = createFileRoute("/_authenticated/settings")({
 function SettingsPage() {
   const fetchProfile = useServerFn(getMyProfile);
   const update = useServerFn(updateMyProfile);
+  const setWindow = useServerFn(setAllowWindow);
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const [handle, setHandle] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const { windowUntil, openWindow, closeWindow } = useFriendsStore();
+
+  const allowUntil = data?.profile?.allow_until ?? null;
+  const windowActive = isWindowOpen(allowUntil);
+  useNow(windowActive); // 카운트다운 갱신
 
   useEffect(() => {
     if (data?.profile) {
@@ -43,7 +48,14 @@ function SettingsPage() {
     }
   }
 
-  const windowActive = !!windowUntil;
+  async function toggleWindow(on: boolean) {
+    try {
+      await setWindow({ data: { minutes: on ? 10 : 0 } });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "변경 실패");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-md space-y-5">
@@ -69,15 +81,15 @@ function SettingsPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><Radio className="h-3.5 w-3.5" /> 받기 설정</p>
-            <h2 className="font-display mt-1 text-base font-extrabold">모르는 사람도 10분 동안 받기</h2>
+            <h2 className="font-display mt-1 text-base font-extrabold">친구가 아닌 사람도 10분 동안 받기</h2>
             <p className="mt-1 text-xs text-muted-foreground">기본은 친구만. 켜는 동안만 누구나 보낼 수 있어요.</p>
           </div>
-          <Switch checked={windowActive} onCheckedChange={(v) => (v ? openWindow(10) : closeWindow())} />
+          <Switch checked={windowActive} onCheckedChange={toggleWindow} />
         </div>
         {windowActive && (
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-sky-soft px-4 py-3">
+          <div className="mt-4 flex items-center justify-between rounded-2xl bg-brand-soft px-4 py-3">
             <span className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" /> 열려 있음</span>
-            <span className="font-display text-lg font-extrabold tabular-nums">{formatRemaining(windowUntil!)}</span>
+            <span className="font-display text-lg font-extrabold tabular-nums">{formatRemaining(allowUntil!)}</span>
           </div>
         )}
       </section>

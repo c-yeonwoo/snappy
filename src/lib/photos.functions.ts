@@ -27,7 +27,7 @@ export const createPhoto = createServerFn({ method: "POST" })
         subject_id: z.string().uuid(),
         original_path: z.string().min(3).max(500),
         watermarked_path: z.string().min(3).max(500),
-        price_cents: z.number().int().min(100).max(100000),
+        price_won: z.number().int().min(1000).max(1000000),
         note: z.string().max(280).optional(),
       })
       .parse(input),
@@ -36,6 +36,26 @@ export const createPhoto = createServerFn({ method: "POST" })
     if (data.subject_id === context.userId) {
       throw new Error("Cannot send a photo to yourself");
     }
+
+    // 전송 권한 검증: 받는 사람과 양방향 친구이거나, 받는 사람이 받기 설정을 열어둔 경우만.
+    const { data: subj } = await context.supabase
+      .from("profiles")
+      .select("allow_until")
+      .eq("id", data.subject_id)
+      .single();
+    const allowOpen = !!subj?.allow_until && new Date(subj.allow_until).getTime() > Date.now();
+    if (!allowOpen) {
+      const { data: fr } = await context.supabase
+        .from("friendships")
+        .select("id")
+        .eq("status", "accepted")
+        .or(
+          `and(requester_id.eq.${context.userId},addressee_id.eq.${data.subject_id}),and(requester_id.eq.${data.subject_id},addressee_id.eq.${context.userId})`,
+        )
+        .maybeSingle();
+      if (!fr) throw new Error("받는 사람과 친구가 아니거나, 받는 사람의 받기 설정이 닫혀 있어요");
+    }
+
     const { data: row, error } = await context.supabase
       .from("photos")
       .insert({
@@ -43,7 +63,7 @@ export const createPhoto = createServerFn({ method: "POST" })
         subject_id: data.subject_id,
         original_path: data.original_path,
         watermarked_path: data.watermarked_path,
-        price_cents: data.price_cents,
+        price_won: data.price_won,
         note: data.note ?? null,
       })
       .select("id")
@@ -57,7 +77,7 @@ export const getMyFeed = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: photos, error } = await context.supabase
       .from("photos")
-      .select("id, uploader_id, watermarked_path, price_cents, status, note, created_at")
+      .select("id, uploader_id, watermarked_path, price_won, status, note, created_at")
       .eq("subject_id", context.userId)
       .neq("status", "removed")
       .order("created_at", { ascending: false })
@@ -74,20 +94,17 @@ export const getMyFeed = createServerFn({ method: "GET" })
       for (const p of profs ?? []) profilesMap[p.id] = { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url };
     }
 
-    // signed urls for previews
+    // signed urls for previews — 한 번의 batch 호출로 생성 (N+1 round-trip 방지)
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const enriched = await Promise.all(
-      (photos ?? []).map(async (p) => {
-        const { data: signed } = await supabaseAdmin.storage
-          .from("photos-watermarked")
-          .createSignedUrl(p.watermarked_path, 60 * 60);
-        return {
-          ...p,
-          preview_url: signed?.signedUrl ?? null,
-          uploader: profilesMap[p.uploader_id] ?? null,
-        };
-      }),
-    );
+    const list = photos ?? [];
+    const signed = list.length
+      ? (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? []
+      : [];
+    const enriched = list.map((p, i) => ({
+      ...p,
+      preview_url: signed[i]?.signedUrl ?? null,
+      uploader: profilesMap[p.uploader_id] ?? null,
+    }));
     return { photos: enriched };
   });
 
@@ -96,7 +113,7 @@ export const getMySent = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: photos, error } = await context.supabase
       .from("photos")
-      .select("id, subject_id, watermarked_path, price_cents, status, created_at")
+      .select("id, subject_id, watermarked_path, price_won, status, created_at")
       .eq("uploader_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -113,28 +130,25 @@ export const getMySent = createServerFn({ method: "GET" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const enriched = await Promise.all(
-      (photos ?? []).map(async (p) => {
-        const { data: signed } = await supabaseAdmin.storage
-          .from("photos-watermarked")
-          .createSignedUrl(p.watermarked_path, 60 * 60);
-        return {
-          ...p,
-          preview_url: signed?.signedUrl ?? null,
-          subject: profilesMap[p.subject_id] ?? null,
-        };
-      }),
-    );
+    const list = photos ?? [];
+    const signed = list.length
+      ? (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? []
+      : [];
+    const enriched = list.map((p, i) => ({
+      ...p,
+      preview_url: signed[i]?.signedUrl ?? null,
+      subject: profilesMap[p.subject_id] ?? null,
+    }));
 
     // earnings
     const { data: earnRows } = await context.supabase
       .from("purchases")
-      .select("uploader_earning_cents, status")
+      .select("uploader_earning_won, status")
       .eq("uploader_id", context.userId)
       .eq("status", "completed");
-    const earnings_cents = (earnRows ?? []).reduce((sum, r) => sum + (r.uploader_earning_cents ?? 0), 0);
+    const earnings_won = (earnRows ?? []).reduce((sum, r) => sum + (r.uploader_earning_won ?? 0), 0);
 
-    return { photos: enriched, earnings_cents };
+    return { photos: enriched, earnings_won };
   });
 
 export const getPhotoDetail = createServerFn({ method: "POST" })
@@ -143,7 +157,7 @@ export const getPhotoDetail = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: photo, error } = await context.supabase
       .from("photos")
-      .select("id, uploader_id, subject_id, watermarked_path, price_cents, status, note, created_at")
+      .select("id, uploader_id, subject_id, watermarked_path, price_won, status, note, created_at")
       .eq("id", data.id)
       .single();
     if (error || !photo) throw new Error("Photo not found");
@@ -202,22 +216,22 @@ export const purchasePhoto = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: photo, error } = await supabaseAdmin
       .from("photos")
-      .select("id, uploader_id, subject_id, price_cents, status, original_path")
+      .select("id, uploader_id, subject_id, price_won, status, original_path")
       .eq("id", data.id)
       .single();
     if (error || !photo) throw new Error("Photo not found");
     if (photo.subject_id !== context.userId) throw new Error("Only the photo subject can purchase");
     if (photo.status !== "available") throw new Error("Photo is not available");
 
-    const earning = Math.floor(photo.price_cents * EARNING_RATE);
+    const earning = Math.floor(photo.price_won * EARNING_RATE);
 
-    // NOTE: Stripe will be wired in next. For MVP we mark as completed instantly.
+    // NOTE: 토스페이먼츠 결제 연동은 다음 단계. MVP에서는 즉시 completed 처리.
     const { error: insErr } = await supabaseAdmin.from("purchases").insert({
       photo_id: photo.id,
       buyer_id: context.userId,
       uploader_id: photo.uploader_id,
-      amount_cents: photo.price_cents,
-      uploader_earning_cents: earning,
+      amount_won: photo.price_won,
+      uploader_earning_won: earning,
       status: "completed",
     });
     if (insErr) throw new Error(insErr.message);
@@ -265,7 +279,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("profiles")
-      .select("id, handle, display_name, avatar_url")
+      .select("id, handle, display_name, avatar_url, allow_until")
       .eq("id", context.userId)
       .single();
     if (error) throw new Error(error.message);
@@ -289,4 +303,127 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// ----------------- 친구 (D8: 양방향 친구) -----------------
+
+type FriendProfile = { id: string; handle: string; display_name: string; avatar_url: string | null };
+
+export const getFriends = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const me = context.userId;
+    const { data: rows, error } = await context.supabase
+      .from("friendships")
+      .select("requester_id, addressee_id, status")
+      .or(`requester_id.eq.${me},addressee_id.eq.${me}`);
+    if (error) throw new Error(error.message);
+
+    // 상대 id 모으기
+    const otherOf = (r: { requester_id: string; addressee_id: string }) =>
+      r.requester_id === me ? r.addressee_id : r.requester_id;
+    const ids = Array.from(new Set((rows ?? []).map(otherOf)));
+    const profilesMap: Record<string, FriendProfile> = {};
+    if (ids.length > 0) {
+      const { data: profs } = await context.supabase
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url")
+        .in("id", ids);
+      for (const p of profs ?? []) profilesMap[p.id] = p as FriendProfile;
+    }
+
+    const friends: FriendProfile[] = [];
+    const incoming: FriendProfile[] = []; // 내가 받은 요청 (수락 대기)
+    const outgoing: FriendProfile[] = []; // 내가 보낸 요청 (상대 수락 대기)
+    for (const r of rows ?? []) {
+      const other = profilesMap[otherOf(r)];
+      if (!other) continue;
+      if (r.status === "accepted") friends.push(other);
+      else if (r.addressee_id === me) incoming.push(other);
+      else outgoing.push(other);
+    }
+    return { friends, incoming, outgoing };
+  });
+
+export const sendFriendRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ to_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const me = context.userId;
+    if (data.to_id === me) throw new Error("자기 자신에게는 요청할 수 없어요");
+
+    // 상대가 이미 나에게 요청해둔 게 있으면 → 바로 수락(양방향 성립)
+    const { data: reverse } = await context.supabase
+      .from("friendships")
+      .select("id, status")
+      .eq("requester_id", data.to_id)
+      .eq("addressee_id", me)
+      .maybeSingle();
+    if (reverse) {
+      if (reverse.status !== "accepted") {
+        await context.supabase.from("friendships").update({ status: "accepted" }).eq("id", reverse.id);
+      }
+      return { status: "accepted" as const };
+    }
+
+    const { error } = await context.supabase
+      .from("friendships")
+      .upsert(
+        { requester_id: me, addressee_id: data.to_id, status: "pending" },
+        { onConflict: "requester_id,addressee_id", ignoreDuplicates: true },
+      );
+    if (error) throw new Error(error.message);
+    return { status: "pending" as const };
+  });
+
+export const respondFriendRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ from_id: z.string().uuid(), accept: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const me = context.userId;
+    if (data.accept) {
+      const { error } = await context.supabase
+        .from("friendships")
+        .update({ status: "accepted" })
+        .eq("requester_id", data.from_id)
+        .eq("addressee_id", me)
+        .eq("status", "pending");
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await context.supabase
+        .from("friendships")
+        .delete()
+        .eq("requester_id", data.from_id)
+        .eq("addressee_id", me);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const removeFriend = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ other_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const me = context.userId;
+    const { error } = await context.supabase
+      .from("friendships")
+      .delete()
+      .or(
+        `and(requester_id.eq.${me},addressee_id.eq.${data.other_id}),and(requester_id.eq.${data.other_id},addressee_id.eq.${me})`,
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setAllowWindow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ minutes: z.number().int().min(0).max(120) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const allow_until = data.minutes > 0 ? new Date(Date.now() + data.minutes * 60_000).toISOString() : null;
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({ allow_until })
+      .eq("id", context.userId);
+    if (error) throw new Error(error.message);
+    return { allow_until };
   });
