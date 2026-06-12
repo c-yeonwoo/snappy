@@ -12,10 +12,11 @@ type State = { friends: Friend[]; windowUntil: number | null };
 
 const listeners = new Set<() => void>();
 function emit() {
+  cached = compute();
   listeners.forEach((l) => l());
 }
 
-function read(): State {
+function compute(): State {
   if (typeof window === "undefined") return { friends: [], windowUntil: null };
   let friends: Friend[] = [];
   try {
@@ -26,6 +27,11 @@ function read(): State {
   const w = Number(localStorage.getItem(WINDOW_KEY) || 0);
   const windowUntil = w && w > Date.now() ? w : null;
   return { friends, windowUntil };
+}
+
+let cached: State = compute();
+function read(): State {
+  return cached;
 }
 
 function writeFriends(list: Friend[]) {
