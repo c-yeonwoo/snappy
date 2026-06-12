@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Snappy — All Sky
- * Palette: #f0f9ff / #e0f2fe / #7dd3fc / #38bdf8 / #0284c7
+ * Snappy — Electric Lime
+ * Palette: #0a0a0a / #fafafa / #d9f99d / #a3e635
  * Fonts: Outfit (display) + Figtree (body)
  */
 
@@ -61,31 +61,31 @@
 :root {
   --radius: 1.1rem;
   /* base */
-  --background: oklch(0.985 0.014 230);
-  --foreground: oklch(0.24 0.05 245);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.18 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.05 245);
+  --card-foreground: oklch(0.18 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.05 245);
-  /* sky as primary action — cool, fresh */
-  --primary: oklch(0.7 0.14 230);          /* #38bdf8-ish */
-  --primary-foreground: oklch(0.99 0.01 230);
-  --primary-glow: oklch(0.85 0.09 225);    /* #7dd3fc */
-  --secondary: oklch(0.96 0.03 230);       /* #e0f2fe */
-  --secondary-foreground: oklch(0.3 0.08 235);
-  --muted: oklch(0.965 0.02 230);
-  --muted-foreground: oklch(0.52 0.04 240);
-  --accent: oklch(0.88 0.08 220);          /* #7dd3fc */
-  --accent-foreground: oklch(0.24 0.07 235);
+  --popover-foreground: oklch(0.18 0 0);
+  /* lime as primary action — fresh, energetic, pops on black */
+  --primary: oklch(0.12 0 0);              /* near-black for buttons */
+  --primary-foreground: oklch(0.97 0.06 130); /* lime-tinted text on black */
+  --primary-glow: oklch(0.88 0.19 128);    /* #a3e635 */
+  --secondary: oklch(0.96 0.04 128);       /* #d9f99d soft tint */
+  --secondary-foreground: oklch(0.2 0.02 130);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.48 0.01 120);
+  --accent: oklch(0.88 0.19 128);          /* #a3e635 */
+  --accent-foreground: oklch(0.18 0.04 130);
   --destructive: oklch(0.62 0.21 22);
   --destructive-foreground: oklch(0.99 0.01 80);
-  --border: oklch(0.93 0.025 230);
-  --input: oklch(0.94 0.022 230);
-  --ring: oklch(0.78 0.12 225);
-  /* named tokens */
-  --sky: oklch(0.94 0.04 225);
-  --sky-soft: oklch(0.985 0.02 230);
-  --sky-deep: oklch(0.62 0.14 235);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.93 0 0);
+  --ring: oklch(0.78 0.18 128);
+  /* named tokens — kept as `sky-*` for backwards compat, now neutral/lime */
+  --sky: oklch(0.95 0.06 128);
+  --sky-soft: oklch(0.98 0.03 128);
+  --sky-deep: oklch(0.18 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -155,8 +155,8 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     background-image:
-      radial-gradient(900px 600px at 0% -10%, oklch(0.93 0.06 225 / 0.7), transparent 60%),
-      radial-gradient(700px 500px at 100% 10%, oklch(0.95 0.05 215 / 0.55), transparent 60%);
+      radial-gradient(900px 600px at 0% -10%, oklch(0.92 0.18 128 / 0.35), transparent 60%),
+      radial-gradient(700px 500px at 100% 10%, oklch(0.96 0.05 128 / 0.5), transparent 60%);
     background-attachment: fixed;
   }
 
