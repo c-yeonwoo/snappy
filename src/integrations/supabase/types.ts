@@ -189,7 +189,7 @@ export type Database = {
     }
     Enums: {
       friendship_status: "pending" | "accepted"
-      photo_status: "available" | "sold" | "removed"
+      photo_status: "available" | "sold" | "removed" | "reported"
       purchase_status: "pending" | "completed" | "failed"
     }
     CompositeTypes: {

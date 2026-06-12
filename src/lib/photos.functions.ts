@@ -133,7 +133,7 @@ export const getMySent = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: photos, error } = await context.supabase
       .from("photos")
-      .select("id, subject_id, watermarked_path, price_won, status, created_at, batch_id")
+      .select("id, subject_id, original_path, price_won, status, created_at, batch_id")
       .eq("uploader_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -151,8 +151,9 @@ export const getMySent = createServerFn({ method: "GET" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const list = photos ?? [];
+    // 보낸 사람은 원본(워터마크 없는) 이미지로 썸네일 표시
     const signed = list.length
-      ? (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? []
+      ? (await supabaseAdmin.storage.from("photos-original").createSignedUrls(list.map((p) => p.original_path), 60 * 60)).data ?? []
       : [];
     const enriched = list.map((p, i) => ({
       ...p,
@@ -318,7 +319,7 @@ export const getSentBatch = createServerFn({ method: "POST" })
     // 1차: batch_id로 조회
     let { data: photos, error } = await context.supabase
       .from("photos")
-      .select("id, subject_id, watermarked_path, price_won, status, created_at")
+      .select("id, subject_id, original_path, price_won, status, created_at")
       .eq("batch_id", data.batch_id)
       .eq("uploader_id", context.userId)
       .order("created_at", { ascending: true });
@@ -327,7 +328,7 @@ export const getSentBatch = createServerFn({ method: "POST" })
     if (!photos || photos.length === 0) {
       const { data: single, error: e2 } = await context.supabase
         .from("photos")
-        .select("id, subject_id, watermarked_path, price_won, status, created_at")
+        .select("id, subject_id, original_path, price_won, status, created_at")
         .eq("id", data.batch_id)
         .eq("uploader_id", context.userId)
         .limit(1);
@@ -344,8 +345,9 @@ export const getSentBatch = createServerFn({ method: "POST" })
       .single();
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const wm = (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(list.map((p) => p.watermarked_path), 60 * 60)).data ?? [];
-    const items = list.map((p, i) => ({ id: p.id, status: p.status, price_won: p.price_won, preview_url: wm[i]?.signedUrl ?? null }));
+    // 보낸 사람용 — 원본 이미지로 표시
+    const orig = (await supabaseAdmin.storage.from("photos-original").createSignedUrls(list.map((p) => p.original_path), 60 * 60)).data ?? [];
+    const items = list.map((p, i) => ({ id: p.id, status: p.status, price_won: p.price_won, preview_url: orig[i]?.signedUrl ?? null }));
     return { subject, photos: items };
   });
 
@@ -410,8 +412,8 @@ export const reportPhoto = createServerFn({ method: "POST" })
       reason: data.reason,
     });
     if (error) throw dbError(error);
-    // also remove from feed
-    await context.supabase.from("photos").update({ status: "removed" }).eq("id", data.id);
+    // 신고된 사진은 'reported' 상태 — 보낸 사람이 구별할 수 있게 분리
+    await context.supabase.from("photos").update({ status: "reported" as any }).eq("id", data.id);
     return { ok: true };
   });
 

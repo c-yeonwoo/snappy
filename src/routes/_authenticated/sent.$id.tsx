@@ -117,8 +117,13 @@ function SentBatchPage() {
           <div key={p.id} className="overflow-hidden rounded-[1.25rem] border border-white/70 bg-card">
             <div className="relative aspect-square bg-secondary">
               {p.preview_url && <img src={p.preview_url} alt="" className="h-full w-full object-cover" />}
-              <span className={`absolute left-2 top-2 chip ${p.status === "sold" ? "!bg-primary !text-primary-foreground !border-primary/40" : ""}`}>
-                {p.status === "sold" ? "소장됨" : "대기 중"}
+              <span className={`absolute left-2 top-2 chip text-[9px] ${
+                p.status === "sold" ? "!bg-primary !text-primary-foreground !border-primary/40"
+                : p.status === "removed" ? "!bg-muted !text-muted-foreground !border-border"
+                : p.status === "reported" ? "!bg-destructive/15 !text-destructive !border-destructive/30"
+                : ""
+              }`}>
+                {{ available: "대기중", sold: "소장됨", removed: "반려됨", reported: "신고됨" }[p.status] ?? "대기중"}
               </span>
             </div>
             <p className="p-2.5 text-center text-xs font-semibold">{formatWon(p.price_won)}</p>

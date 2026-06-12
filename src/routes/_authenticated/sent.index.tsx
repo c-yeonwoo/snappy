@@ -88,10 +88,28 @@ function SentPage() {
             {groups.map((g) => {
               const cover = g[0];
               const count = g.length;
+              // 그룹 대표 상태: reported > removed > sold > available
+              const groupStatus = g.some((p) => p.status === "reported")
+                ? "reported"
+                : g.some((p) => p.status === "removed")
+                ? "removed"
+                : g.every((p) => p.status === "sold")
+                ? "sold"
+                : "available";
+              const statusLabel: Record<string, string> = {
+                available: "대기중", sold: "소장됨", removed: "반려됨", reported: "신고됨",
+              };
+              const statusCls: Record<string, string> = {
+                available: "",
+                sold: "!bg-primary !text-primary-foreground !border-primary/40",
+                removed: "!bg-muted !text-muted-foreground !border-border",
+                reported: "!bg-destructive/15 !text-destructive !border-destructive/30",
+              };
               const inner = (
                 <>
                   <div className="relative aspect-square bg-secondary">
                     {cover.preview_url && <img src={cover.preview_url} alt="" className="h-full w-full object-cover" />}
+                    <span className={`absolute left-2.5 top-2.5 chip text-[9px] ${statusCls[groupStatus]}`}>{statusLabel[groupStatus]}</span>
                     {count > 1 && (
                       <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-0.5 rounded-full bg-foreground/85 px-2 py-0.5 text-[10px] font-bold text-background">
                         <Images className="h-3 w-3" />{count}
