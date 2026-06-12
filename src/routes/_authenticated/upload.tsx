@@ -33,6 +33,7 @@ function UploadPage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
   const [selected, setSelected] = useState<Profile | null>(null);
+  const [mode, setMode] = useState<"friends" | "id">(friends.length > 0 ? "friends" : "id");
   const [files, setFiles] = useState<File[]>([]);
   const [price, setPrice] = useState(5000); // 원
   const [note, setNote] = useState("");
@@ -105,25 +106,6 @@ function UploadPage() {
         <p className="mt-1 text-sm text-muted-foreground">친구에게는 바로, 모르는 사람은 상대가 받기 설정을 열어야 보낼 수 있어요.</p>
       </header>
 
-      {friends.length > 0 && (
-        <div>
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground"><Users className="h-3.5 w-3.5" /> 내 친구</p>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            {friends.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setSelected({ id: f.id, handle: f.handle, display_name: f.display_name, avatar_url: null })}
-                className={`flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 shadow-sm transition ${selected?.id === f.id ? "ring-2 ring-primary" : ""}`}
-              >
-                <div className="grid h-12 w-12 place-items-center rounded-full bg-sky-soft font-display font-bold">{f.display_name?.[0] ?? "?"}</div>
-                <span className="max-w-[64px] truncate text-[11px] font-semibold">@{f.handle}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <section className="rounded-[1.75rem] border border-white/70 bg-card/90 p-6 backdrop-blur">
         <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">1 · 받는 사람</Label>
         {selected ? (
@@ -157,23 +139,49 @@ function UploadPage() {
           </>
         ) : (
           <>
-            <div className="mt-3 flex gap-2">
-              <Input placeholder="@핸들 또는 이름" className="rounded-full" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doSearch())} />
-              <Button type="button" className="rounded-full" onClick={doSearch}><Search className="h-4 w-4" /></Button>
+            <div className="mt-3 inline-flex rounded-full bg-secondary p-1 text-xs font-semibold">
+              <button type="button" onClick={() => setMode("friends")} className={`rounded-full px-3 py-1.5 transition ${mode === "friends" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>친구</button>
+              <button type="button" onClick={() => setMode("id")} className={`rounded-full px-3 py-1.5 transition ${mode === "id" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>@ID로 보내기</button>
             </div>
-            {results.length > 0 && (
-              <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border">
-                {results.map((r) => (
-                  <li key={r.id}>
-                    <button type="button" className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-secondary" onClick={() => { setSelected(r); setResults([]); setQ(""); }}>
-                      <span><span className="font-medium">{r.display_name}</span> <span className="text-xs text-muted-foreground">@{r.handle}</span></span>
-                      {isFriend(r.id)
-                        ? <span className="chip !bg-primary/10 !text-primary !border-primary/30"><Users className="h-3 w-3" />친구</span>
-                        : <span className="chip !bg-muted !text-muted-foreground !border-transparent"><Lock className="h-3 w-3" />친구 아님</span>}
+            {mode === "friends" ? (
+              friends.length === 0 ? (
+                <p className="mt-4 text-xs text-muted-foreground">아직 친구가 없어요. @ID로 검색해서 추가해보세요.</p>
+              ) : (
+                <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                  {friends.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setSelected({ id: f.id, handle: f.handle, display_name: f.display_name, avatar_url: null })}
+                      className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 shadow-sm"
+                    >
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-sky-soft font-display font-bold">{f.display_name?.[0] ?? "?"}</div>
+                      <span className="max-w-[64px] truncate text-[11px] font-semibold">@{f.handle}</span>
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </div>
+              )
+            ) : (
+              <>
+                <div className="mt-3 flex gap-2">
+                  <Input placeholder="@핸들 또는 이름" className="rounded-full" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), doSearch())} />
+                  <Button type="button" className="rounded-full" onClick={doSearch}><Search className="h-4 w-4" /></Button>
+                </div>
+                {results.length > 0 && (
+                  <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border">
+                    {results.map((r) => (
+                      <li key={r.id}>
+                        <button type="button" className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-secondary" onClick={() => { setSelected(r); setResults([]); setQ(""); }}>
+                          <span><span className="font-medium">{r.display_name}</span> <span className="text-xs text-muted-foreground">@{r.handle}</span></span>
+                          {isFriend(r.id)
+                            ? <span className="chip !bg-primary/10 !text-primary !border-primary/30"><Users className="h-3 w-3" />친구</span>
+                            : <span className="chip !bg-muted !text-muted-foreground !border-transparent"><Lock className="h-3 w-3" />친구 아님</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </>
         )}
