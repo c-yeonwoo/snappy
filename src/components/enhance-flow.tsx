@@ -109,15 +109,16 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
       </Button>
 
       {open && (
-        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 items-center justify-center overflow-y-auto bg-foreground/50 px-4 py-6 backdrop-blur-sm" onClick={() => !busy && setOpen(false)}>
-          <div className="my-auto w-full rounded-[1.75rem] border border-white/60 bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="font-display inline-flex items-center gap-1.5 text-lg font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
-              <button onClick={() => !busy && setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>
-            </div>
+        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 flex-col bg-card">
+          {/* 상단바 */}
+          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+            <h2 className="font-display inline-flex items-center gap-1.5 text-lg font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
+            <button onClick={() => !busy && setOpen(false)} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-5 w-5" /></button>
+          </div>
 
-            {/* 원본 비율 유지 + 꾹 누르면 원본 비교 */}
-            <div className="relative mt-4 grid place-items-center overflow-hidden rounded-2xl bg-secondary">
+          {/* 스크롤 영역 */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="relative grid place-items-center overflow-hidden rounded-2xl bg-secondary">
               {(holding ? originalUrl : (savedUrl ?? preview)) && (
                 <img
                   src={(holding ? originalUrl : (savedUrl ?? preview)) ?? undefined}
@@ -128,7 +129,7 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
                   onPointerUp={() => setHolding(false)}
                   onPointerLeave={() => setHolding(false)}
                   onPointerCancel={() => setHolding(false)}
-                  className="block max-h-[56vh] w-full select-none object-contain"
+                  className="block max-h-[60vh] w-full select-none object-contain"
                 />
               )}
               {busy && <div className="absolute inset-0 grid place-items-center bg-foreground/20 text-sm font-semibold text-background">처리 중…</div>}
@@ -146,13 +147,16 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
                 </button>
               ))}
             </div>
+          </div>
 
+          {/* 하단 액션 (고정) */}
+          <div className="border-t border-border/60 px-5 py-4">
             {savedUrl ? (
-              <Button className="mt-4 h-12 w-full rounded-full text-base" onClick={downloadResult}>
+              <Button className="h-12 w-full rounded-full text-base" onClick={downloadResult}>
                 <Download className="mr-1.5 h-4 w-4" /> 보정본 다운로드
               </Button>
             ) : (
-              <Button className="mt-4 h-12 w-full rounded-full text-base" onClick={save} disabled={busy || (mode === "mock" && !blob)}>
+              <Button className="h-12 w-full rounded-full text-base" onClick={save} disabled={busy || (mode === "mock" && !blob)}>
                 {busy ? "처리 중…" : `${ENHANCE_COST} 크레딧으로 보정하기`}
               </Button>
             )}
