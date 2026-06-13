@@ -31,6 +31,7 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
   const [blob, setBlob] = useState<Blob | null>(null);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"mock" | "real">("mock");
+  const [holding, setHolding] = useState(false); // 꾹 누르면 원본 비교
 
   async function openModal() {
     setSavedUrl(null);
@@ -108,18 +109,34 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
       </Button>
 
       {open && (
-        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 items-end justify-center bg-foreground/40 backdrop-blur-sm sm:items-center" onClick={() => !busy && setOpen(false)}>
-          <div className="w-full max-w-md rounded-t-[1.75rem] border border-white/60 bg-card p-5 shadow-2xl sm:rounded-[1.75rem]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 items-center justify-center overflow-y-auto bg-foreground/50 px-4 py-6 backdrop-blur-sm" onClick={() => !busy && setOpen(false)}>
+          <div className="my-auto w-full rounded-[1.75rem] border border-white/60 bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-display inline-flex items-center gap-1.5 text-lg font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
               <button onClick={() => !busy && setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>
             </div>
 
-            <div className="relative mt-4 aspect-square overflow-hidden rounded-2xl bg-secondary">
-              {(savedUrl ?? preview) && <img src={savedUrl ?? preview ?? undefined} alt="" className="h-full w-full object-cover" />}
+            {/* 원본 비율 유지 + 꾹 누르면 원본 비교 */}
+            <div className="relative mt-4 grid place-items-center overflow-hidden rounded-2xl bg-secondary">
+              {(holding ? originalUrl : (savedUrl ?? preview)) && (
+                <img
+                  src={(holding ? originalUrl : (savedUrl ?? preview)) ?? undefined}
+                  alt=""
+                  draggable={false}
+                  style={{ touchAction: "none" }}
+                  onPointerDown={() => setHolding(true)}
+                  onPointerUp={() => setHolding(false)}
+                  onPointerLeave={() => setHolding(false)}
+                  onPointerCancel={() => setHolding(false)}
+                  className="block max-h-[56vh] w-full select-none object-contain"
+                />
+              )}
               {busy && <div className="absolute inset-0 grid place-items-center bg-foreground/20 text-sm font-semibold text-background">처리 중…</div>}
-              <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">{savedUrl ? "보정 완료" : "미리보기"}</span>
+              <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                {holding ? "원본" : savedUrl ? "보정 완료" : "보정본"}
+              </span>
             </div>
+            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">사진을 꾹 누르면 원본과 비교할 수 있어요</p>
 
             <div className="mt-3 grid grid-cols-3 gap-2">
               {STYLES.map((s) => (
