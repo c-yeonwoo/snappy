@@ -163,7 +163,7 @@ function PollDetailPage() {
 
       {/* 확대 라이트박스 */}
       {lightbox !== null && options[lightbox] && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-foreground/95" onClick={() => setLightbox(null)}>
+        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 flex-col bg-foreground/95" onClick={() => setLightbox(null)}>
           <div className="flex justify-end p-4">
             <button onClick={() => setLightbox(null)} className="grid h-10 w-10 place-items-center rounded-full bg-background/15 text-background"><X className="h-5 w-5" /></button>
           </div>

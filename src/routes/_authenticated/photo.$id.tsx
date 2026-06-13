@@ -354,7 +354,7 @@ function PhotoDetailPage() {
 
       {/* AI 보정 모달 */}
       {enhOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 backdrop-blur-sm sm:items-center" onClick={() => !enhBusy && setEnhOpen(false)}>
+        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 items-end justify-center bg-foreground/40 backdrop-blur-sm sm:items-center" onClick={() => !enhBusy && setEnhOpen(false)}>
           <div className="w-full max-w-md rounded-t-[1.75rem] border border-white/60 bg-card p-5 shadow-2xl sm:rounded-[1.75rem]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-extrabold inline-flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
