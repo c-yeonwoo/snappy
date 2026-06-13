@@ -1,13 +1,11 @@
 // @ts-nocheck
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { getSentBatch, updateBatchPrice, cancelPhotos, hideSentBatch } from "@/lib/photos.functions";
-import { formatPoint } from "@/lib/format";
+import { getSentBatch, cancelPhotos, hideSentBatch } from "@/lib/photos.functions";
 import { toast } from "sonner";
-import { ArrowLeft, X, Check, Trash2 } from "lucide-react";
+import { ArrowLeft, X, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/sent/$id")({
   head: () => ({ meta: [{ title: "보낸 묶음 — Snappy" }] }),
@@ -19,7 +17,6 @@ function SentBatchPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const batchFn = useServerFn(getSentBatch);
-  const priceFn = useServerFn(updateBatchPrice);
   const cancelFn = useServerFn(cancelPhotos);
   const hideFn = useServerFn(hideSentBatch);
 
@@ -44,27 +41,7 @@ function SentBatchPage() {
       setBusy(false);
     }
   }
-  const basePrice = available[0]?.price_won ?? photos[0]?.price_won ?? 3000;
-
-  const [price, setPrice] = useState(0);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setPrice(basePrice); }, [basePrice]);
-  const dirty = price !== basePrice;
-
-  async function savePrice() {
-    setBusy(true);
-    try {
-      await priceFn({ data: { batch_id: id, price_won: price } });
-      toast.success("가격을 변경했어요");
-      qc.invalidateQueries({ queryKey: ["sentBatch", id] });
-      qc.invalidateQueries({ queryKey: ["sent"] });
-      qc.invalidateQueries({ queryKey: ["feed"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "변경 실패");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function cancelAll() {
     const ids = available.map((p) => p.id);
@@ -114,26 +91,12 @@ function SentBatchPage() {
         <p className="mt-1 text-sm text-muted-foreground">{photos.length}장 · 대기 {available.length} · 소장 {soldCount}</p>
       </header>
 
-      {/* 가격 조정 (대기 중 컷에만 적용) */}
-      <section className="rounded-[1.5rem] border border-white/70 bg-card/90 p-5 backdrop-blur">
-        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">한 컷 가격</p>
-        {available.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">모두 소장돼서 가격을 바꿀 수 없어요.</p>
-        ) : (
-          <>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex items-center rounded-full bg-secondary px-1">
-                <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
-                <span className="font-digit w-24 text-center text-base font-semibold">{formatPoint(price)}</span>
-                <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
-              </div>
-              <Button type="button" disabled={!dirty || busy} className="rounded-full" onClick={savePrice}>
-                <Check className="mr-1 h-4 w-4" />변경
-              </Button>
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">대기 중 {available.length}장에 적용돼요. (소장된 컷 가격은 유지)</p>
-          </>
-        )}
+      {/* 적립 안내 */}
+      <section className="rounded-[1.5rem] border border-white/70 bg-card/90 px-5 py-4 backdrop-blur">
+        <p className="text-sm">
+          상대가 소장한 컷마다 <b className="text-primary">+1 크레딧</b>이 적립돼요.
+          {soldCount > 0 && <> 지금까지 <b className="text-foreground">{soldCount}장</b> 소장됐어요.</>}
+        </p>
       </section>
 
       {/* 사진들 */}
@@ -151,9 +114,6 @@ function SentBatchPage() {
                 {{ available: "대기중", sold: "소장됨", removed: "반려됨", reported: "신고됨" }[p.status] ?? "대기중"}
               </span>
             </div>
-            <p className="p-2.5 text-center text-xs font-semibold">
-              <span className="font-digit">{formatPoint(p.price_won)}</span>
-            </p>
           </div>
         ))}
       </div>

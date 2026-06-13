@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMySent, cancelPhotos } from "@/lib/photos.functions";
-import { formatPoint } from "@/lib/format";
 import { useState } from "react";
 import { Coins, Images } from "lucide-react";
 import { toast } from "sonner";
@@ -164,11 +163,11 @@ function SentPage() {
                     <p className="truncate text-sm font-semibold">@{p.subject?.handle ?? "?"}</p>
                   </div>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    <span className="font-digit">{formatPoint(p.price_won)}</span>
+                    {isSold ? "소장됨" : isRemoved ? "반려됨" : "신고됨"}
                   </p>
                 </div>
                 {isSold && (
-                  <span className="shrink-0 font-digit text-sm font-semibold text-primary">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
+                  <span className="shrink-0 text-sm font-bold text-primary">+1 크레딧</span>
                 )}
                 {isRemoved && (
                   <span className="shrink-0 text-xs text-muted-foreground">반려</span>

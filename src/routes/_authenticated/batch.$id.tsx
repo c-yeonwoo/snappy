@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { getBatch, purchasePhotos, removePhoto, reportPhoto } from "@/lib/photos.functions";
-import { formatPoint, relativeTime } from "@/lib/format";
+import { formatCredit, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2 } from "lucide-react";
 
@@ -50,7 +50,7 @@ function BatchPage() {
     setSelected((s) => { const n = new Set(s); n.has(pid) ? n.delete(pid) : n.add(pid); return n; });
   }
   const selectedList = photos.filter((p) => selected.has(p.id) && !p.is_owned);
-  const total = selectedList.reduce((sum, p) => sum + p.price_won, 0);
+  const total = selectedList.length; // 1장 = 1 크레딧
   const availableCount = photos.filter((p) => !p.is_owned).length;
   const ownedPhotos = photos.filter((p) => p.is_owned);
   const cur = photos[current];
@@ -160,7 +160,7 @@ function BatchPage() {
                           </>
                         ) : (
                           <>
-                            <Plus className="h-4 w-4" /> 담기 · <span className="font-digit">{formatPoint(p.price_won)}</span>
+                            <Plus className="h-4 w-4" /> 담기
                           </>
                         )}
                       </button>
@@ -209,12 +209,12 @@ function BatchPage() {
                   <p className="font-digit text-xl font-semibold">{selectedList.length}장</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">합계</p>
-                  <p className="font-digit text-2xl font-semibold text-primary">{formatPoint(total)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">필요 크레딧</p>
+                  <p className="font-display text-2xl font-extrabold text-primary">{formatCredit(total)}</p>
                 </div>
               </div>
               <Button className="h-12 w-full rounded-full text-base" onClick={buy} disabled={busy}>
-                {busy ? "받는 중…" : <><span className="font-digit">{formatPoint(total)}</span>으로 소장하기</>}
+                {busy ? "받는 중…" : `${total} 크레딧으로 소장하기`}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">소장하면 선택한 컷의 워터마크가 풀려요.</p>
             </>

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFriends, getMyFeed, getMySent, respondFriendRequest } from "@/lib/photos.functions";
-import { formatPoint, relativeTime, isNew } from "@/lib/format";
+import { relativeTime, isNew } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, UserPlus, ImageDown, Coins, Check, X, BellOff } from "lucide-react";
 import { toast } from "sonner";
@@ -102,7 +102,7 @@ function NotificationsPage() {
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 backdrop-blur">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Coins className="h-4 w-4" /></span>
                     <p className="min-w-0 flex-1 text-sm"><b>@{p.subject?.handle ?? "?"}</b> 님이 내 사진을 소장했어요</p>
-                    <span className="shrink-0 text-xs font-semibold font-digit text-foreground">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
+                    <span className="shrink-0 text-xs font-bold text-primary">+1 크레딧</span>
                   </li>
                 ))}
               </ul>

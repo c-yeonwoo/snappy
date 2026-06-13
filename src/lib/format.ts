@@ -1,12 +1,14 @@
 // 순수 포맷 유틸. (구 mock-feed.ts에서 분리 — 실DB 연결 후 mock 데이터는 제거)
 
-/** 포인트 표시. 1원 = 1P */
-export function formatPoint(p: number) {
-  return `${p.toLocaleString("ko-KR")}P`;
+/** 크레딧 표시. 사진 1장 = 1 크레딧 (호혜 모델) */
+export function formatCredit(n: number) {
+  return `${n.toLocaleString("ko-KR")} 크레딧`;
 }
 
-/** @deprecated formatPoint 사용 */
-export const formatWon = formatPoint;
+/** @deprecated 크레딧 모델로 전환. formatCredit 사용 */
+export const formatPoint = formatCredit;
+/** @deprecated formatCredit 사용 */
+export const formatWon = formatCredit;
 
 export function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

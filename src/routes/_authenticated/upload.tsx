@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { formatPoint } from "@/lib/format";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -56,7 +55,6 @@ function UploadPage() {
   const [selected, setSelected] = useState<Profile | null>(null);
   const [mode, setMode] = useState<"recent" | "id">("recent");
   const [files, setFiles] = useState<File[]>([]);
-  const [price, setPrice] = useState(3000); // 원 (기본값)
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const MAX_UPLOAD_FILES = 20;
@@ -127,7 +125,7 @@ function UploadPage() {
             subject_id: selected.id,
             original_path: originalPath,
             watermarked_path: watermarkedPath,
-            price_won: price,
+            price_won: 1000, // 크레딧 모델: 가격 미사용(스키마 호환용 고정값)
             note: note || undefined,
             batch_id: batchId,
           },
@@ -270,20 +268,10 @@ function UploadPage() {
 
       <section className="rounded-[1.75rem] border border-white/70 bg-card/90 p-6 backdrop-blur space-y-5">
         <div>
-          <Label htmlFor="price" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">3 · 한 컷 가격</Label>
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex items-center rounded-full bg-secondary px-1">
-              <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
-              <span className="font-digit w-24 text-center text-base font-semibold">{formatPoint(price)}</span>
-              <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
-            </div>
-              <p className="text-xs text-muted-foreground">팔리면 <span className="font-digit text-foreground">{formatPoint(Math.round(price * 0.7))}</span> 적립</p>
-            </div>
-          </div>
-        <div>
           <Label htmlFor="note" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">메시지 (선택)</Label>
           <Textarea id="note" maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} className="mt-2 rounded-2xl px-4 py-3" placeholder="짧은 메시지" />
         </div>
+        <p className="text-[11px] text-muted-foreground">상대가 소장하면 한 컷당 +1 크레딧이 적립돼요.</p>
       </section>
 
       <Button size="lg" className="w-full rounded-full text-base" onClick={doUpload} disabled={busy}>
