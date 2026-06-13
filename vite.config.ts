@@ -12,4 +12,10 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // 배포 타겟: Vercel. nitro 를 명시적으로 켜고 vercel 프리셋으로 고정.
+  // (lovable 설정 기본값은 cloudflare-module 이라 override 필요)
+  // 다른 타겟으로 바꾸려면 NITRO_PRESET 환경변수 사용 (예: cloudflare-module).
+  nitro: {
+    preset: process.env.NITRO_PRESET ?? "vercel",
+  },
 });
