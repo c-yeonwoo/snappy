@@ -106,7 +106,6 @@ function PollDetailPage() {
       <div className="grid grid-cols-2 gap-2.5">
         {options.map((o: any, i: number) => {
           const isPicked = selected === o.id;
-          const isMine = my_vote === o.id;
           const isWinner = revealed && (o.votes ?? 0) === maxVotes && maxVotes > 0;
           const pct = revealed && total_votes > 0 ? Math.round(((o.votes ?? 0) / total_votes) * 100) : 0;
           return (
@@ -114,25 +113,24 @@ function PollDetailPage() {
               key={o.id}
               className={`relative overflow-hidden rounded-[1.25rem] border-2 bg-secondary transition ${isPicked ? "border-primary ring-2 ring-primary/30" : "border-white/70"}`}
             >
-              <button onClick={() => setLightbox(i)} className="relative block aspect-square w-full active:scale-[0.98]">
+              <button onClick={() => (canVote ? setSelected(o.id) : setLightbox(i))} className="relative block aspect-square w-full active:scale-[0.98]">
                 {o.image_url && <img src={o.image_url} alt="" className="h-full w-full object-cover" />}
                 <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-xs font-bold">{i + 1}</span>
-                <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-foreground/55 text-background"><Maximize2 className="h-3 w-3" /></span>
                 {isWinner && (
                   <span className="absolute bottom-2 left-2 grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground shadow"><Trophy className="h-3.5 w-3.5" /></span>
                 )}
-                {isMine && (
+                {isPicked && (
                   <span className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground shadow"><Check className="h-4 w-4" /></span>
                 )}
               </button>
-              {canVote && (
-                <button
-                  onClick={() => setSelected(o.id)}
-                  className={`w-full py-2 text-xs font-bold transition ${isPicked ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
-                >
-                  {isPicked ? "선택됨" : "이 컷 선택"}
-                </button>
-              )}
+              {/* 확대 아이콘 — 누를 때만 풀스크린 */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightbox(i); }}
+                className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-foreground/55 text-background active:scale-95"
+                aria-label="크게 보기"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
               {revealed && (
                 <div className="p-2.5">
                   <div className="flex items-center justify-between text-xs font-bold">
