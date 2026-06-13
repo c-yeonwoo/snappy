@@ -110,16 +110,18 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
       </Button>
 
       {open && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100] mx-auto flex w-full max-w-[480px] flex-col bg-card">
-          {/* 상단바 */}
-          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-            <h2 className="font-display inline-flex items-center gap-1.5 text-lg font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
-            <button onClick={() => !busy && setOpen(false)} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-5 w-5" /></button>
-          </div>
+        <div
+          className="fixed inset-0 z-[100] mx-auto flex max-w-[480px] items-center justify-center overflow-y-auto bg-foreground/40 px-4 py-6 backdrop-blur-md"
+          onClick={() => !busy && setOpen(false)}
+        >
+          <div className="my-auto w-full max-w-[400px] overflow-hidden rounded-[1.75rem] border border-white/60 bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 pt-4">
+              <h2 className="font-display inline-flex items-center gap-1.5 text-base font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
+              <button onClick={() => !busy && setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>
+            </div>
 
-          {/* 스크롤 영역 */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
-            <div className="relative grid place-items-center overflow-hidden rounded-2xl bg-secondary">
+            {/* 원본 비율 그대로 + 꾹 누르면 원본 비교 */}
+            <div className="relative mt-3 grid place-items-center overflow-hidden bg-secondary">
               {(holding ? originalUrl : (savedUrl ?? preview)) && (
                 <img
                   src={(holding ? originalUrl : (savedUrl ?? preview)) ?? undefined}
@@ -138,32 +140,27 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
                 {holding ? "원본" : savedUrl ? "보정 완료" : "보정본"}
               </span>
             </div>
-            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">사진을 꾹 누르면 원본과 비교할 수 있어요</p>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {STYLES.map((s) => (
-                <button key={s.key} disabled={busy || !!savedUrl} onClick={() => runPreview(s.key)}
-                  className={`rounded-full border py-2 text-xs font-semibold transition ${style === s.key ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"} disabled:opacity-50`}>
-                  {s.label}
-                </button>
-              ))}
+            <div className="px-4 pb-4">
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">사진을 꾹 누르면 원본과 비교할 수 있어요</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {STYLES.map((s) => (
+                  <button key={s.key} disabled={busy || !!savedUrl} onClick={() => runPreview(s.key)}
+                    className={`rounded-full border py-2 text-xs font-semibold transition ${style === s.key ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"} disabled:opacity-50`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              {savedUrl ? (
+                <Button className="mt-4 h-12 w-full rounded-full text-base" onClick={downloadResult}>
+                  <Download className="mr-1.5 h-4 w-4" /> 보정본 다운로드
+                </Button>
+              ) : (
+                <Button className="mt-4 h-12 w-full rounded-full text-base" onClick={save} disabled={busy || (mode === "mock" && !blob)}>
+                  {busy ? "처리 중…" : `${ENHANCE_COST} 크레딧으로 보정하기`}
+                </Button>
+              )}
             </div>
-          </div>
-
-          {/* 하단 액션 (고정) */}
-          <div className="border-t border-border/60 px-5 py-4">
-            {savedUrl ? (
-              <Button className="h-12 w-full rounded-full text-base" onClick={downloadResult}>
-                <Download className="mr-1.5 h-4 w-4" /> 보정본 다운로드
-              </Button>
-            ) : (
-              <Button className="h-12 w-full rounded-full text-base" onClick={save} disabled={busy || (mode === "mock" && !blob)}>
-                {busy ? "처리 중…" : `${ENHANCE_COST} 크레딧으로 보정하기`}
-              </Button>
-            )}
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              {savedUrl ? "내 보정본이 저장됐어요." : mode === "real" ? "AI가 화질을 개선해요. 저장 시 크레딧이 차감돼요." : "스타일을 골라 미리보고, 저장할 때 크레딧이 차감돼요."}
-            </p>
           </div>
         </div>,
         document.body,
