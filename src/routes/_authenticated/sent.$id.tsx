@@ -123,7 +123,7 @@ function SentBatchPage() {
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center rounded-full bg-secondary px-1">
                 <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
-                <span className="font-display w-24 text-center text-base font-extrabold">{formatPoint(price)}</span>
+                <span className="font-digit w-24 text-center text-base font-semibold">{formatPoint(price)}</span>
                 <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
               </div>
               <Button type="button" disabled={!dirty || busy} className="rounded-full" onClick={savePrice}>
@@ -150,7 +150,9 @@ function SentBatchPage() {
                 {{ available: "대기중", sold: "소장됨", removed: "반려됨", reported: "신고됨" }[p.status] ?? "대기중"}
               </span>
             </div>
-            <p className="p-2.5 text-center text-xs font-semibold">{formatPoint(p.price_won)}</p>
+            <p className="p-2.5 text-center text-xs font-semibold">
+              <span className="font-digit">{formatPoint(p.price_won)}</span>
+            </p>
           </div>
         ))}
       </div>

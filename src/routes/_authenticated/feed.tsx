@@ -50,7 +50,6 @@ function FeedPage() {
               : "내가 소장해서 원본으로 가지고 있는 컷."}
           </p>
         </div>
-        <p className="shrink-0 text-xs text-muted-foreground">{photos.length}개</p>
       </header>
 
       {/* Tabs */}
@@ -135,7 +134,14 @@ function FeedPage() {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-foreground">
-                      <Lock className="h-2.5 w-2.5" />{count > 1 ? `${count}장 · ${formatPoint(cover.price_won)}~` : formatPoint(cover.price_won)}
+                      <Lock className="h-2.5 w-2.5" />
+                      {count > 1 ? (
+                        <>
+                          <span className="font-digit">{count}장</span> · <span className="font-digit">{formatPoint(cover.price_won)}~</span>
+                        </>
+                      ) : (
+                        <span className="font-digit">{formatPoint(cover.price_won)}</span>
+                      )}
                     </span>
                   )}
                 </div>

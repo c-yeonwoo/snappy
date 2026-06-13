@@ -158,7 +158,15 @@ function BatchPage() {
                       </button>
                     ) : (
                       <button onClick={() => toggle(p.id)} className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold shadow transition ${picked ? "bg-primary text-primary-foreground" : "bg-white/95 text-foreground"}`}>
-                        {picked ? <><Check className="h-4 w-4" /> 담음</> : <><Plus className="h-4 w-4" /> 담기 · {formatPoint(p.price_won)}</>}
+                        {picked ? (
+                          <>
+                            <Check className="h-4 w-4" /> 담음
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4" /> 담기 · <span className="font-digit">{formatPoint(p.price_won)}</span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -202,15 +210,15 @@ function BatchPage() {
               <div className="mb-3 flex items-end justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">선택</p>
-                  <p className="font-display text-xl font-extrabold">{selectedList.length}장</p>
+                  <p className="font-digit text-xl font-semibold">{selectedList.length}장</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">합계</p>
-                  <p className="font-display text-2xl font-extrabold text-primary">{formatPoint(total)}</p>
+                  <p className="font-digit text-2xl font-semibold text-primary">{formatPoint(total)}</p>
                 </div>
               </div>
               <Button className="h-12 w-full rounded-full text-base" onClick={buy} disabled={busy}>
-                {busy ? "받는 중…" : `${formatPoint(total)}으로 소장하기`}
+                {busy ? "받는 중…" : <><span className="font-digit">{formatPoint(total)}</span>으로 소장하기</>}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">소장하면 선택한 컷의 워터마크가 풀려요.</p>
             </>

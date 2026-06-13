@@ -163,10 +163,12 @@ function SentPage() {
                     <span className={`chip !text-[9px] !px-1.5 !py-0.5 ${statusConfig.cls}`}>{statusConfig.label}</span>
                     <p className="truncate text-sm font-semibold">@{p.subject?.handle ?? "?"}</p>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{formatPoint(p.price_won)}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <span className="font-digit">{formatPoint(p.price_won)}</span>
+                  </p>
                 </div>
                 {isSold && (
-                  <span className="shrink-0 font-display text-sm font-extrabold text-primary">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
+                  <span className="shrink-0 font-digit text-sm font-semibold text-primary">+{formatPoint(Math.round(p.price_won * 0.7))}</span>
                 )}
                 {isRemoved && (
                   <span className="shrink-0 text-xs text-muted-foreground">반려</span>

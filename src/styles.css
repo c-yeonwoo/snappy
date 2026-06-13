@@ -174,8 +174,15 @@
 
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
   font-weight: 700;
+}
+
+@utility font-digit {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+  font-weight: 500;
+  font-variant-numeric: proportional-nums;
 }
 
 @utility chip {

@@ -273,12 +273,12 @@ function UploadPage() {
           <div className="mt-3 flex items-center gap-3">
             <div className="flex items-center rounded-full bg-secondary px-1">
               <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.max(1000, price - 500))}>−</Button>
-              <span className="font-display w-24 text-center text-base font-extrabold">{formatPoint(price)}</span>
+              <span className="font-digit w-24 text-center text-base font-semibold">{formatPoint(price)}</span>
               <Button type="button" variant="ghost" size="sm" className="rounded-full px-2" onClick={() => setPrice(Math.min(50000, price + 500))}>+</Button>
             </div>
-            <p className="text-xs text-muted-foreground">팔리면 <b className="text-foreground">{formatPoint(Math.round(price * 0.7))}</b> 적립</p>
+              <p className="text-xs text-muted-foreground">팔리면 <span className="font-digit text-foreground">{formatPoint(Math.round(price * 0.7))}</span> 적립</p>
+            </div>
           </div>
-        </div>
         <div>
           <Label htmlFor="note" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">메시지 (선택)</Label>
           <Textarea id="note" maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} className="mt-2 rounded-2xl px-4 py-3" placeholder="짧은 메시지" />

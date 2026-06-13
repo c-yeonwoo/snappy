@@ -16,10 +16,11 @@ export const Route = createFileRoute("/")({
 });
 
 // Sample feed preview — overlapping polaroid stack to clearly differ from the in-app grid.
+// 고정 너비 무대(STAGE) 위에 px 좌표로 배치 → 디바이스 폭과 무관하게 항상 동일한 구도.
 const preview = [
-  { tag: "@yuna", img: "/splash/sp1.jpg", rot: "-rotate-6 -translate-x-6", z: "z-10" },
-  { tag: "@minho", img: "/splash/sp2.jpg", rot: "rotate-3 translate-x-2", z: "z-20" },
-  { tag: "@jiwoo", img: "/splash/sp3.jpg", rot: "rotate-12 translate-x-10 translate-y-3", z: "z-0" },
+  { tag: "@yuna", img: "/splash/sp1.jpg", left: 0, top: 10, rot: "-rotate-6", z: "z-10" },
+  { tag: "@minho", img: "/splash/sp2.jpg", left: 100, top: 32, rot: "rotate-3", z: "z-20" },
+  { tag: "@jiwoo", img: "/splash/sp3.jpg", left: 200, top: 4, rot: "rotate-[14deg]", z: "z-0" },
 ];
 
 function Index() {
@@ -30,19 +31,19 @@ function Index() {
 
       <header className="relative mx-auto flex max-w-md items-center justify-between px-[18px] py-4">
         <Link to="/">
-          <Logo className="text-lg" />
+          <Logo className="text-2xl" />
         </Link>
       </header>
 
       <main className="relative mx-auto max-w-md px-[18px] pb-12">
         {/* Hero with overlapping polaroid stack — distinct from in-app grid */}
         <section className="pt-20">
-          <div className="relative mx-auto h-[280px] w-full">
-            {preview.map((c, i) => (
+          <div className="relative mx-auto h-[270px] w-[340px]">
+            {preview.map((c) => (
               <div
                 key={c.tag}
-                style={{ left: `${10 + i * 22}%`, top: `${10 + (i % 2) * 18}px` }}
-                className={`absolute h-[210px] w-[150px] overflow-hidden rounded-[1.25rem] border-4 border-white ${c.rot} ${c.z} shadow-[0_20px_40px_-15px_rgba(10,10,10,0.25)] transition`}
+                style={{ left: c.left, top: c.top }}
+                className={`absolute h-[200px] w-[140px] overflow-hidden rounded-[1.25rem] border-4 border-white ${c.rot} ${c.z} shadow-[0_20px_40px_-15px_rgba(10,10,10,0.25)] transition`}
               >
                 <img src={c.img} alt={c.tag} className="h-full w-full object-cover object-top" />
                 <div className="absolute left-2 top-2 chip !px-1.5 !py-0.5 !text-[10px] !bg-white/90">
@@ -64,7 +65,7 @@ function Index() {
         {/* Trust row */}
         <section className="mt-8 grid grid-cols-3 gap-2">
           {[
-            { icon: Coins, t: "찍어주면 포인트" },
+            { icon: Coins, t: "찍을수록 수익" },
             { icon: CheckCheck, t: "마음에 드는 컷만" },
             { icon: ShieldCheck, t: "원본은 안전하게" },
           ].map((f) => (
@@ -83,8 +84,6 @@ function Index() {
             </Button>
           </Link>
         </div>
-
-        <footer className="mt-4 text-center text-xs text-muted-foreground">made by Snappy</footer>
       </main>
     </div>
   );

@@ -192,7 +192,7 @@ function PhotoDetailPage() {
         <div className="mt-5 flex items-end justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">가격</p>
-            <p className="font-display text-3xl font-extrabold text-primary">{formatPoint(p.price_won)}</p>
+            <p className="font-digit text-3xl font-semibold text-primary">{formatPoint(p.price_won)}</p>
           </div>
           {unlocked && (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
@@ -209,7 +209,7 @@ function PhotoDetailPage() {
             </Button>
           ) : canBuy ? (
             <Button className="h-12 w-full rounded-full text-base" onClick={handleBuy} disabled={busy}>
-              {busy ? "받는 중…" : `${formatPoint(p.price_won)}으로 소장하고 원본 받기`}
+              {busy ? "받는 중…" : <><span className="font-digit">{formatPoint(p.price_won)}</span>으로 소장하고 원본 받기</>}
             </Button>
           ) : (
             <p className="rounded-full bg-secondary py-3 text-center text-sm font-semibold text-muted-foreground">

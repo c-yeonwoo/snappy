@@ -1,0 +1,14 @@
+{
+  "name": "Snappy",
+  "short_name": "Snappy",
+  "description": "친구가 찍어준 내 사진을 받고, 마음에 드는 컷만 골라 소장하세요.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#a3e635",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

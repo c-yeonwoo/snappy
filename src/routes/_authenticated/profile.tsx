@@ -162,7 +162,7 @@ function ProfilePage() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-secondary"><Coins className="h-4 w-4" /></span>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">내 포인트</p>
-              <p className="font-display text-lg font-extrabold leading-tight">{formatPoint(pointBalance)}</p>
+              <p className="font-digit text-lg font-semibold leading-tight">{formatPoint(pointBalance)}</p>
             </div>
           </div>
           <div className="flex gap-2">
