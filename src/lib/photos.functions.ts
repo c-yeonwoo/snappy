@@ -19,6 +19,11 @@ const PAYMENT_MODE = isMockPayment(TOSS_CLIENT_KEY) ? "mock" : "real";
 const MAX_BATCH_SIZE = 20;
 const MAX_CHARGE_AMOUNT = 200000;
 
+// AI 보정 — fal.ai. 키가 없거나 mock 이면 mock 모드(클라 캔버스 보정, 비용 0).
+const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? "mock_fal_key";
+const FAL_MODEL = process.env.FAL_MODEL ?? "fal-ai/clarity-upscaler";
+const AI_MODE = isMockPayment(FAL_KEY) ? "mock" : "real";
+
 // DB/스토리지 오류는 사용자에겐 한글 일반 메시지로 노출하고, 원본은 서버 로그로 남긴다.
 function dbError(e: { message?: string } | null | undefined) {
   console.error("[supabase]", e?.message);
@@ -1185,7 +1190,63 @@ export const getEnhanceInfo = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const balance = await getWalletBalance(supabaseAdmin, context.userId);
-    return { cost: ENHANCE_COST, balance };
+    return { cost: ENHANCE_COST, balance, mode: AI_MODE };
+  });
+
+// fal.ai 호출 (real 모드). 이미지 URL을 넣고 보정/업스케일 결과 URL을 받는다.
+async function callFal(imageUrl: string, _style?: string): Promise<string> {
+  const resp = await fetch(`https://fal.run/${FAL_MODEL}`, {
+    method: "POST",
+    headers: { Authorization: `Key ${FAL_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ image_url: imageUrl }),
+  });
+  if (!resp.ok) throw new Error(`fal_error_${resp.status}`);
+  const json: any = await resp.json();
+  const out = json?.image?.url ?? json?.images?.[0]?.url ?? json?.output?.[0] ?? json?.url ?? null;
+  if (!out) throw new Error("fal_no_output");
+  return out;
+}
+
+// 서버사이드 AI 보정 (real 모드 전용). 원본 → fal.ai → photos-enhanced 저장 → 크레딧 차감.
+// mock 모드에서는 호출되지 않음(클라가 캔버스 보정 + commitEnhancement 사용).
+export const enhancePhotoAI = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ source_photo_id: z.string().uuid(), style: z.string().max(20).optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (AI_MODE !== "real") throw new Error("AI 보정이 아직 활성화되지 않았어요");
+    if (!(await canAccessOriginal(supabaseAdmin, context.userId, data.source_photo_id))) {
+      throw new Error("이 사진을 보정할 권한이 없어요");
+    }
+    // 원본 경로 + 잔액 사전 확인
+    const { data: photo } = await supabaseAdmin.from("photos").select("original_path").eq("id", data.source_photo_id).maybeSingle();
+    if (!photo) throw new Error("사진을 찾을 수 없어요");
+    const balance = await getWalletBalance(supabaseAdmin, context.userId);
+    if (balance < ENHANCE_COST) throw new Error("크레딧이 부족해요. 친구를 더 찍어주고 모아보세요.");
+
+    const { data: src } = await supabaseAdmin.storage.from("photos-original").createSignedUrl(photo.original_path, 60 * 5);
+    if (!src?.signedUrl) throw dbError(null);
+
+    // AI 호출 → 결과 다운로드 → 저장
+    const outUrl = await callFal(src.signedUrl, data.style);
+    const out = await fetch(outUrl);
+    if (!out.ok) throw new Error("보정 결과를 가져오지 못했어요");
+    const blob = await out.blob();
+    const path = `${context.userId}/${crypto.randomUUID()}.jpg`;
+    const up = await supabaseAdmin.storage.from("photos-enhanced").upload(path, blob, { contentType: "image/jpeg" });
+    if (up.error) throw dbError(up.error);
+
+    // 크레딧 차감(원자적) + 기록
+    const { error: spendErr } = await supabaseAdmin.rpc("spend_credits", {
+      p_user: context.userId, p_amount: ENHANCE_COST, p_note: `ai enhance(fal): ${data.source_photo_id}`,
+    });
+    if (spendErr) throw purchaseRpcError(spendErr);
+    await supabaseAdmin.from("photo_enhancements").insert({
+      user_id: context.userId, source_photo_id: data.source_photo_id, enhanced_path: path, style: data.style ?? null, cost: ENHANCE_COST,
+    });
+    await logPhotoAccess(context.userId, data.source_photo_id, "download");
+    const { data: signed } = await supabaseAdmin.storage.from("photos-enhanced").createSignedUrl(path, 60 * 10);
+    return { ok: true, enhanced_url: signed?.signedUrl ?? null };
   });
 
 // 보정본 커밋 — 클라가 보정한 이미지를 photos-enhanced 에 업로드한 뒤 호출.

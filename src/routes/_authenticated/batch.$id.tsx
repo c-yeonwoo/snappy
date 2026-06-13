@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { getBatch, purchasePhotos, removePhoto, reportPhoto, createPollFromBatch } from "@/lib/photos.functions";
 import { ConfirmModal, PromptModal } from "@/components/confirm-modal";
+import { EnhanceFlow } from "@/components/enhance-flow";
 import { formatCredit, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2, Vote } from "lucide-react";
@@ -252,6 +253,13 @@ function BatchPage() {
             <Button variant="ghost" className="mt-2 w-full rounded-full text-muted-foreground" onClick={askFriends} disabled={busy}>
               <Vote className="mr-1.5 h-4 w-4" /> 뭐가 제일 잘 나왔어? 친구한테 물어보기
             </Button>
+          )}
+
+          {/* 소장한 현재 컷 → AI 보정 */}
+          {cur?.is_owned && (
+            <div className="mt-2">
+              <EnhanceFlow photoId={cur.id} originalUrl={cur.original_url} />
+            </div>
           )}
 
           {ownedPhotos.length > 1 && (
