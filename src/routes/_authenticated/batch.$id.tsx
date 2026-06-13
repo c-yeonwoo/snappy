@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
-import { confirmPhotoPurchase, getBatch, purchasePhotos, removePhoto, reportPhoto } from "@/lib/photos.functions";
+import { getBatch, purchasePhotos, removePhoto, reportPhoto } from "@/lib/photos.functions";
 import { formatPoint, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2 } from "lucide-react";
@@ -20,7 +20,6 @@ function BatchPage() {
   const qc = useQueryClient();
   const batchFn = useServerFn(getBatch);
   const buyFn = useServerFn(purchasePhotos);
-  const confirmBuyFn = useServerFn(confirmPhotoPurchase);
   const removeFn = useServerFn(removePhoto);
   const reportFn = useServerFn(reportPhoto);
 
@@ -65,10 +64,7 @@ function BatchPage() {
     if (selectedList.length === 0) return;
     setBusy(true);
     try {
-      const res = await buyFn({ data: { ids: selectedList.map((p) => p.id) } });
-      if (res.status === "pending") {
-        await confirmBuyFn({ data: { session_id: res.session_id } });
-      }
+      await buyFn({ data: { ids: selectedList.map((p) => p.id) } });
       toast.success(`${selectedList.length}장 소장 완료! 워터마크가 풀렸어요.`);
       setSelected(new Set());
       await refresh();

@@ -3,7 +3,6 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const EARNING_RATE = 0.7;
 const MOCK_PAYMENT_KEY = "mock_toss_payment_key_0000";
 const TOSS_CLIENT_KEY =
   process.env.TOSS_CLIENT_KEY ?? process.env.VITE_TOSS_CLIENT_KEY ?? process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
@@ -16,7 +15,6 @@ function isMockPayment(key: string) {
 }
 
 const PAYMENT_MODE = isMockPayment(TOSS_CLIENT_KEY) ? "mock" : "real";
-const DEFAULT_ORDER_NAME = "Snappy 사진 소장";
 const MAX_BATCH_SIZE = 20;
 const MAX_CHARGE_AMOUNT = 200000;
 
@@ -24,6 +22,14 @@ const MAX_CHARGE_AMOUNT = 200000;
 function dbError(e: { message?: string } | null | undefined) {
   console.error("[supabase]", e?.message);
   return new Error("요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
+}
+
+// 원자적 포인트 구매 RPC가 RAISE 하는 예외를 사용자 메시지로 변환.
+function purchaseRpcError(e: { message?: string } | null | undefined) {
+  const msg = e?.message ?? "";
+  if (msg.includes("INSUFFICIENT_POINTS")) return new Error("포인트가 부족해요. 충전 후 다시 시도해주세요.");
+  if (msg.includes("NO_PURCHASABLE_PHOTOS")) return new Error("소장할 수 있는 사진이 없어요");
+  return dbError(e);
 }
 
 function parseCallbackUrl(raw: string) {
@@ -85,17 +91,6 @@ async function applyWalletCredit(
   if (error) throw dbError(error);
 }
 
-async function ensurePhotoPurchaseSessionOwner(supabaseAdmin: any, sessionId: string, userId: string) {
-  const { data: session } = await supabaseAdmin
-    .from("photo_purchase_sessions")
-    .select("id, buyer_id")
-    .eq("id", sessionId)
-    .maybeSingle();
-  if (!session) throw new Error("결제 세션을 찾을 수 없어요.");
-  if (session.buyer_id !== userId) throw new Error("본인 결제만 확인할 수 있어요.");
-  return session;
-}
-
 async function ensurePointSession(supabaseAdmin: any, orderId: string, userId: string) {
   const { data: session } = await supabaseAdmin
     .from("point_charge_sessions")
@@ -130,137 +125,17 @@ async function logPhotoAccess(contextUserId: string, photoId: string, eventType:
   });
 }
 
-async function createPurchaseSessionRows(
-  supabaseAdmin: any,
-  userId: string,
-  photoRows: Array<{ id: string; price_won: number; uploader_id: string; uploader_name?: string }>,
-) {
-  const session_id = crypto.randomUUID();
-  const total = photoRows.reduce((sum, p) => sum + p.price_won, 0);
-  const order_id = generateOrderId("snp");
-  const payload = {
-    photo_count: photoRows.length,
-    photo_ids: photoRows.map((p) => p.id),
-  };
-  const { error: sessionErr } = await supabaseAdmin.from("photo_purchase_sessions").insert({
-    id: session_id,
-    buyer_id: userId,
-    order_id,
-    total_amount_won: total,
-    status: "pending",
-    photos: payload.photo_ids,
-    provider: PAYMENT_MODE === "mock" ? "mock" : "toss",
-    metadata: payload,
+// 포인트로 사진 구매 — 원자적 RPC(purchase_photos_with_points) 호출.
+// 잔액 검증·차감·sold 처리·업로더 적립·구매/세션 기록이 단일 트랜잭션에서 처리된다.
+async function buyPhotosWithPoints(supabaseAdmin: any, buyerId: string, photoIds: string[]) {
+  const { data, error } = await supabaseAdmin.rpc("purchase_photos_with_points", {
+    p_buyer: buyerId,
+    p_photo_ids: photoIds,
   });
-  if (sessionErr) throw dbError(sessionErr);
-
-  const { error: purchaseErr } = await supabaseAdmin.from("purchases").insert(
-    photoRows.map((p) => ({
-      photo_id: p.id,
-      buyer_id: userId,
-      uploader_id: p.uploader_id,
-      amount_won: p.price_won,
-      uploader_earning_won: Math.floor(p.price_won * EARNING_RATE),
-      status: "pending",
-      session_id,
-    })),
-  );
-  if (purchaseErr) throw dbError(purchaseErr);
-
-  return {
-    session_id,
-    order_id,
-    total_amount_won: total,
-  };
-}
-
-async function completePurchaseSession(
-  sessionId: string,
-  context: { supabaseAdmin: any; userId: string },
-  forceComplete = false,
-) {
-  await ensurePhotoPurchaseSessionOwner(context.supabaseAdmin, sessionId, context.userId);
-  const { data: session, error: sessionErr } = await context.supabaseAdmin
-    .from("photo_purchase_sessions")
-      .select("id, buyer_id, total_amount_won, photos, status, metadata, order_id")
-    .eq("id", sessionId)
-    .single();
-  if (sessionErr || !session) throw new Error("결제 세션을 찾을 수 없습니다.");
-  if (session.status !== "pending" && session.status !== "completed") {
-    throw new Error("이미 처리되었거나 유효하지 않은 결제입니다.");
-  }
-  if (session.status === "completed") {
-    return session;
-  }
-
-  const photoIds = (session.photos ?? []) as string[];
-  const { data: photos, error: photoError } = await context.supabaseAdmin
-    .from("photos")
-    .select("id, uploader_id, subject_id, price_won, status, original_path")
-    .in("id", photoIds)
-    .eq("subject_id", context.userId)
-    .eq("status", "available");
-  if (photoError) throw dbError(photoError);
-
-  const targets = photos ?? [];
-  if (targets.length === 0) throw new Error("결제할 수 있는 사진이 없습니다.");
-
-  const required = targets.reduce((sum, p) => sum + p.price_won, 0);
-  const balance = await getWalletBalance(context.supabaseAdmin, context.userId);
-  if (!forceComplete && balance < required) {
-    throw new Error("포인트가 부족해요. 충전 후 다시 시도해주세요.");
-  }
-
-  const updatedTargets: typeof targets = [];
-  for (const photo of targets) {
-    const { error: updErr } = await context.supabaseAdmin
-      .from("photos")
-      .update({ status: "sold" })
-      .eq("id", photo.id)
-      .eq("status", "available");
-    if (!updErr) updatedTargets.push(photo);
-    await logPhotoAccess(context.userId, photo.id, "purchase");
-  }
-
-  if (updatedTargets.length === 0) throw new Error("이미 모두 처리되었어요.");
-
-  // 실제로 'sold' 처리된 컷의 합계만 차감 (부분 실패 시 과금 방지)
-  const spent = updatedTargets.reduce((sum, p) => sum + p.price_won, 0);
-  const { error: spendErr } = await context.supabaseAdmin.from("wallet_transactions").insert({
-    user_id: context.userId,
-    amount_won: -spent,
-    kind: "spend",
-    status: "completed",
-    session_id: sessionId,
-    note: `photo purchase: ${session.order_id ?? sessionId}`,
-  });
-  if (spendErr) throw dbError(spendErr);
-
-  for (const photo of updatedTargets) {
-    const earning = Math.floor(photo.price_won * EARNING_RATE);
-    const { error: purchaseErr } = await context.supabaseAdmin
-      .from("purchases")
-      .update({ status: "completed" })
-      .eq("session_id", sessionId)
-      .eq("photo_id", photo.id)
-      .eq("status", "pending");
-    if (purchaseErr) throw dbError(purchaseErr);
-    await applyWalletCredit(context.supabaseAdmin, {
-      user_id: photo.uploader_id,
-      amount_won: earning,
-      kind: "earn",
-      related_photo_id: photo.id,
-      session_id: sessionId,
-      note: `photo sale: ${photo.id}`,
-    });
-  }
-
-  await context.supabaseAdmin
-    .from("photo_purchase_sessions")
-    .update({ status: "completed", completed_at: new Date().toISOString() })
-    .eq("id", sessionId);
-
-  return { ...session, status: "completed", photos: updatedTargets };
+  if (error) throw purchaseRpcError(error);
+  const rows = (data ?? []) as Array<{ id: string; original_path: string }>;
+  for (const r of rows) await logPhotoAccess(buyerId, r.id, "purchase");
+  return rows;
 }
 
 export const searchProfiles = createServerFn({ method: "POST" })
@@ -492,45 +367,12 @@ export const purchasePhoto = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: photo, error } = await supabaseAdmin
-      .from("photos")
-      .select("id, uploader_id, subject_id, price_won, status, original_path")
-      .eq("id", data.id)
-      .single();
-    if (error || !photo) throw new Error("사진을 찾을 수 없어요");
-    if (photo.subject_id !== context.userId) throw new Error("받는 사람만 소장할 수 있어요");
-    if (photo.status !== "available") throw new Error("이미 소장되었거나 받을 수 없는 사진이에요");
-
-    if (photoRowsOverLimit(1)) {
-      throw new Error("요청 수가 허용 범위를 초과했어요.");
-    }
-
-    const { session_id, order_id, total_amount_won } = await createPurchaseSessionRows(supabaseAdmin, context.userId, [
-      { id: photo.id, price_won: photo.price_won, uploader_id: photo.uploader_id },
-    ]);
-    const isMock = PAYMENT_MODE === "mock" || TOSS_CLIENT_KEY.includes("mock");
-
-    if (isMock) {
-      const completed = await completePurchaseSession(session_id, { supabaseAdmin, userId: context.userId }, true);
-      const target = completed.photos?.[0] ?? photo;
-      const { data: signed } = await supabaseAdmin.storage
-        .from("photos-original")
-        .createSignedUrl(target.original_path, 60 * 10);
-      return {
-        status: "completed",
-        session_id,
-        original_url: signed?.signedUrl ?? null,
-      };
-    }
-
-    return {
-      status: "pending",
-      session_id,
-      order_id,
-      order_name: DEFAULT_ORDER_NAME,
-      amount_won: total_amount_won,
-      payment: getTossConfig(),
-    };
+    const rows = await buyPhotosWithPoints(supabaseAdmin, context.userId, [data.id]);
+    if (rows.length === 0) throw new Error("이미 소장되었거나 받을 수 없는 사진이에요");
+    const { data: signed } = await supabaseAdmin.storage
+      .from("photos-original")
+      .createSignedUrl(rows[0].original_path, 60 * 10);
+    return { status: "completed", original_url: signed?.signedUrl ?? null };
   });
 
 export const requestPointCharge = createServerFn({ method: "POST" })
@@ -665,39 +507,6 @@ export const confirmPointWithdraw = createServerFn({ method: "POST" })
     return { status: "completed", order_id: data.order_id };
   });
 
-export const confirmPhotoPurchase = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ session_id: z.string().uuid(), payment_key: z.string().optional() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const completed = await completePurchaseSession(data.session_id, { supabaseAdmin, userId: context.userId }, true);
-    const photos = (completed.photos ?? []) as Array<{ id: string; original_path: string }>;
-    const { data: urls, error } = await supabaseAdmin.storage
-      .from("photos-original")
-      .createSignedUrls(photos.map((p) => p.original_path), 60 * 10);
-    if (error) throw dbError(error);
-    const map: Record<string, string | null> = {};
-    photos.forEach((photo: { id: string }, i: number) => {
-      map[photo.id] = urls?.[i]?.signedUrl ?? null;
-    });
-    return { status: "completed", session_id: data.session_id, photos: map };
-  });
-
-function photoRowsOverLimit(count: number) {
-  return count <= 0 || count > MAX_BATCH_SIZE;
-}
-
-function getPhotoResultMap(
-  rows: Array<{ id: string; status: string; original_path: string }>,
-  urls: Array<{ signedUrl: string | null }> | null,
-) {
-  const map: Record<string, string | null> = {};
-  rows.forEach((r, i) => {
-    map[r.id] = urls?.[i]?.signedUrl ?? null;
-  });
-  return map;
-}
-
 // 묶음 상세 — 받는 사람이 한 묶음(batch)의 사진들을 슬라이더로 보며 고른다.
 export const getBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -800,53 +609,21 @@ export const updateBatchPrice = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// 묶음에서 선택한 사진들만 결제. 항목별로 검증 후 성공분만 반환.
+// 묶음에서 선택한 사진들을 포인트로 일괄 소장 (원자적 RPC).
 export const purchasePhotos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(20) }).parse(input))
+  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(MAX_BATCH_SIZE) }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const uniqIds = Array.from(new Set(data.ids));
-    const { data: rows, error } = await supabaseAdmin
-      .from("photos")
-      .select("id, uploader_id, subject_id, price_won, status, original_path")
-      .in("id", uniqIds)
-      .eq("subject_id", context.userId)
-      .eq("status", "available");
-    if (error) throw dbError(error);
-    if (photoRowsOverLimit(rows?.length ?? 0)) throw new Error("요청 수가 허용 범위를 초과했어요.");
-    const targets = rows ?? [];
-    if (targets.length === 0) throw new Error("소장할 수 있는 사진이 없어요");
-
-    const session = await createPurchaseSessionRows(
-      supabaseAdmin,
-      context.userId,
-      targets.map((p) => ({ id: p.id, price_won: p.price_won, uploader_id: p.uploader_id })),
-    );
-
-    if (PAYMENT_MODE === "mock") {
-      const completed = await completePurchaseSession(session.session_id, { supabaseAdmin, userId: context.userId }, true);
-      const originals = completed.photos ?? targets;
-      const signed = (await supabaseAdmin.storage.from("photos-original").createSignedUrls(
-        originals.map((p: { original_path: string }) => p.original_path),
-        60 * 10,
-      )).data ?? [];
-      return {
-        status: "completed",
-        session_id: session.session_id,
-        results: Object.entries(getPhotoResultMap(originals as Array<{ id: string; status: string; original_path: string }>, signed)).map(
-          ([id, original_url]) => ({ id, original_url }),
-        ),
-      };
-    }
-
+    const rows = await buyPhotosWithPoints(supabaseAdmin, context.userId, uniqIds);
+    if (rows.length === 0) throw new Error("소장할 수 있는 사진이 없어요");
+    const signed = (await supabaseAdmin.storage
+      .from("photos-original")
+      .createSignedUrls(rows.map((r) => r.original_path), 60 * 10)).data ?? [];
     return {
-      status: "pending",
-      session_id: session.session_id,
-      order_id: session.order_id,
-      order_name: `${DEFAULT_ORDER_NAME} (${targets.length}장)`,
-      amount_won: session.total_amount_won,
-      payment: getTossConfig(),
+      status: "completed",
+      results: rows.map((r, i) => ({ id: r.id, original_url: signed[i]?.signedUrl ?? null })),
     };
   });
 

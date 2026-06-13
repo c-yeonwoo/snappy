@@ -93,8 +93,3 @@ CREATE POLICY "photo_access_logs select own" ON public.photo_access_logs FOR SEL
     FROM public.photos p
     WHERE p.id = photo_id AND (p.uploader_id = auth.uid() OR p.subject_id = auth.uid())
   ));
-
--- 구매 ↔ 결제 세션 연결 컬럼
--- completePurchaseSession()이 session_id로 purchases 행을 completed 처리하므로 필요.
-ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS session_id UUID;
-CREATE INDEX IF NOT EXISTS purchases_session_idx ON public.purchases(session_id);
