@@ -73,7 +73,7 @@ async function applyWalletCredit(
   },
 ) {
   if (params.amount_won === 0) return;
-  await supabaseAdmin.from("wallet_transactions").insert({
+  const { error } = await supabaseAdmin.from("wallet_transactions").insert({
     user_id: params.user_id,
     amount_won: params.amount_won,
     kind: params.kind,
@@ -82,6 +82,7 @@ async function applyWalletCredit(
     session_id: params.session_id ?? null,
     note: params.note,
   });
+  if (error) throw dbError(error);
 }
 
 async function ensurePhotoPurchaseSessionOwner(supabaseAdmin: any, sessionId: string, userId: string) {
@@ -153,7 +154,7 @@ async function createPurchaseSessionRows(
   });
   if (sessionErr) throw dbError(sessionErr);
 
-  await supabaseAdmin.from("purchases").insert(
+  const { error: purchaseErr } = await supabaseAdmin.from("purchases").insert(
     photoRows.map((p) => ({
       photo_id: p.id,
       buyer_id: userId,
@@ -164,6 +165,7 @@ async function createPurchaseSessionRows(
       session_id,
     })),
   );
+  if (purchaseErr) throw dbError(purchaseErr);
 
   return {
     session_id,
@@ -213,7 +215,7 @@ async function completePurchaseSession(
   for (const photo of targets) {
     const { error: updErr } = await context.supabaseAdmin
       .from("photos")
-      .update({ status: "sold", updated_at: new Date().toISOString() })
+      .update({ status: "sold" })
       .eq("id", photo.id)
       .eq("status", "available");
     if (!updErr) updatedTargets.push(photo);
@@ -222,20 +224,23 @@ async function completePurchaseSession(
 
   if (updatedTargets.length === 0) throw new Error("이미 모두 처리되었어요.");
 
-  await context.supabaseAdmin.from("wallet_transactions").insert({
+  // 실제로 'sold' 처리된 컷의 합계만 차감 (부분 실패 시 과금 방지)
+  const spent = updatedTargets.reduce((sum, p) => sum + p.price_won, 0);
+  const { error: spendErr } = await context.supabaseAdmin.from("wallet_transactions").insert({
     user_id: context.userId,
-    amount_won: -required,
+    amount_won: -spent,
     kind: "spend",
     status: "completed",
     session_id: sessionId,
     note: `photo purchase: ${session.order_id ?? sessionId}`,
   });
+  if (spendErr) throw dbError(spendErr);
 
   for (const photo of updatedTargets) {
     const earning = Math.floor(photo.price_won * EARNING_RATE);
     const { error: purchaseErr } = await context.supabaseAdmin
       .from("purchases")
-      .update({ status: "completed", created_at: new Date().toISOString() })
+      .update({ status: "completed" })
       .eq("session_id", sessionId)
       .eq("photo_id", photo.id)
       .eq("status", "pending");
