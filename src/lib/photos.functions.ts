@@ -25,10 +25,12 @@ function dbError(e: { message?: string } | null | undefined) {
   return new Error("요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
 }
 
+const ENHANCE_COST = 2; // AI 보정 1회 크레딧
+
 // 원자적 포인트 구매 RPC가 RAISE 하는 예외를 사용자 메시지로 변환.
 function purchaseRpcError(e: { message?: string } | null | undefined) {
   const msg = e?.message ?? "";
-  if (msg.includes("INSUFFICIENT_POINTS")) return new Error("포인트가 부족해요. 충전 후 다시 시도해주세요.");
+  if (msg.includes("INSUFFICIENT_POINTS")) return new Error("크레딧이 부족해요. 친구를 더 찍어주고 모아보세요.");
   if (msg.includes("NO_PURCHASABLE_PHOTOS")) return new Error("소장할 수 있는 사진이 없어요");
   return dbError(e);
 }
@@ -1088,4 +1090,70 @@ export const closePoll = createServerFn({ method: "POST" })
       .eq("owner_id", context.userId);
     if (error) throw dbError(error);
     return { ok: true };
+  });
+
+// ----------------- AI 보정 (크레딧 sink) -----------------
+
+// 원본 접근 권한이 있는 사진인지 (수집한 피사체 or 업로더)
+async function canAccessOriginal(supabaseAdmin: any, userId: string, photoId: string) {
+  const { data: p } = await supabaseAdmin
+    .from("photos")
+    .select("uploader_id, subject_id, status")
+    .eq("id", photoId)
+    .maybeSingle();
+  if (!p) return false;
+  if (p.uploader_id === userId) return true;
+  if (p.subject_id === userId && p.status === "sold") return true;
+  return false;
+}
+
+// 보정 비용 안내 (UI에서 모달 띄울 때 사용)
+export const getEnhanceInfo = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const balance = await getWalletBalance(supabaseAdmin, context.userId);
+    return { cost: ENHANCE_COST, balance };
+  });
+
+// 보정본 커밋 — 클라가 보정한 이미지를 photos-enhanced 에 업로드한 뒤 호출.
+// 크레딧을 원자적으로 차감하고 기록 후 서명 URL 반환.
+export const commitEnhancement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        source_photo_id: z.string().uuid(),
+        enhanced_path: z.string().min(3).max(500),
+        style: z.string().max(20).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await canAccessOriginal(supabaseAdmin, context.userId, data.source_photo_id))) {
+      throw new Error("이 사진을 보정할 권한이 없어요");
+    }
+    // 크레딧 차감 (원자적)
+    const { error: spendErr } = await supabaseAdmin.rpc("spend_credits", {
+      p_user: context.userId,
+      p_amount: ENHANCE_COST,
+      p_note: `ai enhance: ${data.source_photo_id}`,
+    });
+    if (spendErr) throw purchaseRpcError(spendErr);
+
+    const { error: insErr } = await supabaseAdmin.from("photo_enhancements").insert({
+      user_id: context.userId,
+      source_photo_id: data.source_photo_id,
+      enhanced_path: data.enhanced_path,
+      style: data.style ?? null,
+      cost: ENHANCE_COST,
+    });
+    if (insErr) throw dbError(insErr);
+
+    await logPhotoAccess(context.userId, data.source_photo_id, "download");
+    const { data: signed } = await supabaseAdmin.storage
+      .from("photos-enhanced")
+      .createSignedUrl(data.enhanced_path, 60 * 10);
+    return { ok: true, enhanced_url: signed?.signedUrl ?? null };
   });
