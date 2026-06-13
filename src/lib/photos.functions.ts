@@ -1025,7 +1025,8 @@ export const getFriendPolls = createServerFn({ method: "GET" })
       .in("owner_id", friendIds)
       .eq("status", "open")
       .order("created_at", { ascending: false });
-    const list = (polls ?? []).filter((p: any) => !(p.poll_votes ?? []).some((v: any) => v.voter_id === context.userId));
+    // 투표를 끝냈어도 마감 전까지 계속 보이게 (voted 플래그만 표시)
+    const list = polls ?? [];
 
     const ownerIds = Array.from(new Set(list.map((p: any) => p.owner_id)));
     const { data: owners } = await supabaseAdmin.from("profiles").select("id, handle, display_name").in("id", ownerIds.length ? ownerIds : ["00000000-0000-0000-0000-000000000000"]);
@@ -1043,6 +1044,7 @@ export const getFriendPolls = createServerFn({ method: "GET" })
         created_at: p.created_at,
         option_count: opts.length,
         owner: ownerMap[p.owner_id] ?? null,
+        voted: (p.poll_votes ?? []).some((v: any) => v.voter_id === context.userId),
         cover_url: opts[0] ? (signed[si++]?.signedUrl ?? null) : null,
       };
     });

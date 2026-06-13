@@ -29,6 +29,18 @@ function NotificationsPage() {
   const sold = (sentData?.photos ?? []).filter((p) => p.status === "sold");
   const empty = incoming.length === 0 && newReceived.length === 0 && sold.length === 0;
 
+  // 묶음(batch) 단위로 그룹핑 — 4장 보내면 알림 1개("@x 님이 4장의 사진을 보냈어요")
+  const receivedGroups = (() => {
+    const m = new Map<string, typeof newReceived>();
+    for (const p of newReceived) {
+      const key = (p as any).batch_id ?? `solo:${p.id}`;
+      const arr = m.get(key);
+      if (arr) arr.push(p);
+      else m.set(key, [p]);
+    }
+    return Array.from(m.values());
+  })();
+
   async function accept(id: string) {
     await respond({ data: { from_id: id, accept: true } });
     toast.success("친구가 됐어요!");
@@ -75,20 +87,35 @@ function NotificationsPage() {
             </section>
           )}
 
-          {/* 새로 받은 사진 */}
-          {newReceived.length > 0 && (
+          {/* 새로 받은 사진 (묶음 단위) */}
+          {receivedGroups.length > 0 && (
             <section>
               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">새로 받은 사진</p>
               <ul className="space-y-2">
-                {newReceived.map((p) => (
-                  <li key={p.id}>
-                    <Link to="/photo/$id" params={{ id: p.id }} className="flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 backdrop-blur transition active:bg-secondary">
+                {receivedGroups.map((g) => {
+                  const cover = g[0];
+                  const count = g.length;
+                  const batchId = (cover as any).batch_id as string | undefined;
+                  const msg = (
+                    <>
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-soft"><ImageDown className="h-4 w-4" /></span>
-                      <p className="min-w-0 flex-1 text-sm"><b>@{p.uploader?.handle ?? "?"}</b> 님이 사진을 보냈어요</p>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">{relativeTime(p.created_at)}</span>
-                    </Link>
-                  </li>
-                ))}
+                      <p className="min-w-0 flex-1 text-sm">
+                        <b>@{cover.uploader?.handle ?? "?"}</b> 님이 {count > 1 ? `사진 ${count}장을` : "사진을"} 보냈어요
+                      </p>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">{relativeTime(cover.created_at)}</span>
+                    </>
+                  );
+                  const cls = "flex items-center gap-3 rounded-2xl border border-white/70 bg-card/90 px-3 py-2.5 backdrop-blur transition active:bg-secondary";
+                  return (
+                    <li key={batchId ?? cover.id}>
+                      {count > 1 && batchId ? (
+                        <Link to="/batch/$id" params={{ id: batchId }} className={cls}>{msg}</Link>
+                      ) : (
+                        <Link to="/photo/$id" params={{ id: cover.id }} className={cls}>{msg}</Link>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}

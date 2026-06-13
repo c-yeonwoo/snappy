@@ -34,7 +34,7 @@ function PollsPage() {
 
       {/* 친구가 올린 투표 — 골라줄 차례 */}
       <section>
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">골라줄 차례 · {friendPolls.length}</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">친구 투표 · {friendPolls.length}</p>
         {friendPolls.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
             친구가 올린 투표가 아직 없어요.
@@ -50,7 +50,11 @@ function PollsPage() {
                   <p className="truncate text-sm font-semibold">{p.question || "어떤 컷이 제일 잘 나왔어?"}</p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">@{p.owner?.handle ?? "?"} · 후보 {p.option_count}장</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-bold text-primary">투표하기</span>
+                {p.voted ? (
+                  <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-muted-foreground">투표함</span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-bold text-primary">투표하기</span>
+                )}
               </Link>
             ))}
           </div>
