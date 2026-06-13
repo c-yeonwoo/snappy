@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Inbox, ImagePlus, Images, User, Bell } from "lucide-react";
+import { Inbox, ImagePlus, Images, User, Bell, Vote } from "lucide-react";
 import { getFriends, getMyFeed } from "@/lib/photos.functions";
 import { isNew } from "@/lib/format";
 import { Logo } from "@/components/logo";
@@ -50,6 +50,7 @@ function AuthedLayout() {
   const tabs = [
     { to: "/feed", icon: Inbox, label: "받은함" },
     { to: "/upload", icon: ImagePlus, label: "보내기" },
+    { to: "/polls", icon: Vote, label: "고민" },
     { to: "/sent", icon: Images, label: "보낸 사진" },
     { to: "/profile", icon: User, label: "나" },
   ] as const;

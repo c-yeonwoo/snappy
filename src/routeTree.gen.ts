@@ -20,7 +20,10 @@ import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authen
 import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticated/friends'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedSentIndexRouteImport } from './routes/_authenticated/sent.index'
+import { Route as AuthenticatedPollsIndexRouteImport } from './routes/_authenticated/polls.index'
 import { Route as AuthenticatedSentIdRouteImport } from './routes/_authenticated/sent.$id'
+import { Route as AuthenticatedPollsNewRouteImport } from './routes/_authenticated/polls.new'
+import { Route as AuthenticatedPollsIdRouteImport } from './routes/_authenticated/polls.$id'
 import { Route as AuthenticatedPhotoIdRouteImport } from './routes/_authenticated/photo.$id'
 import { Route as AuthenticatedBatchIdRouteImport } from './routes/_authenticated/batch.$id'
 
@@ -79,10 +82,25 @@ const AuthenticatedSentIndexRoute = AuthenticatedSentIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedSentRoute,
 } as any)
+const AuthenticatedPollsIndexRoute = AuthenticatedPollsIndexRouteImport.update({
+  id: '/polls/',
+  path: '/polls/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSentIdRoute = AuthenticatedSentIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AuthenticatedSentRoute,
+} as any)
+const AuthenticatedPollsNewRoute = AuthenticatedPollsNewRouteImport.update({
+  id: '/polls/new',
+  path: '/polls/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPollsIdRoute = AuthenticatedPollsIdRouteImport.update({
+  id: '/polls/$id',
+  path: '/polls/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPhotoIdRoute = AuthenticatedPhotoIdRouteImport.update({
   id: '/photo/$id',
@@ -107,7 +125,10 @@ export interface FileRoutesByFullPath {
   '/upload': typeof AuthenticatedUploadRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
+  '/polls/$id': typeof AuthenticatedPollsIdRoute
+  '/polls/new': typeof AuthenticatedPollsNewRoute
   '/sent/$id': typeof AuthenticatedSentIdRoute
+  '/polls/': typeof AuthenticatedPollsIndexRoute
   '/sent/': typeof AuthenticatedSentIndexRoute
 }
 export interface FileRoutesByTo {
@@ -121,7 +142,10 @@ export interface FileRoutesByTo {
   '/upload': typeof AuthenticatedUploadRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
+  '/polls/$id': typeof AuthenticatedPollsIdRoute
+  '/polls/new': typeof AuthenticatedPollsNewRoute
   '/sent/$id': typeof AuthenticatedSentIdRoute
+  '/polls': typeof AuthenticatedPollsIndexRoute
   '/sent': typeof AuthenticatedSentIndexRoute
 }
 export interface FileRoutesById {
@@ -138,7 +162,10 @@ export interface FileRoutesById {
   '/_authenticated/upload': typeof AuthenticatedUploadRoute
   '/_authenticated/batch/$id': typeof AuthenticatedBatchIdRoute
   '/_authenticated/photo/$id': typeof AuthenticatedPhotoIdRoute
+  '/_authenticated/polls/$id': typeof AuthenticatedPollsIdRoute
+  '/_authenticated/polls/new': typeof AuthenticatedPollsNewRoute
   '/_authenticated/sent/$id': typeof AuthenticatedSentIdRoute
+  '/_authenticated/polls/': typeof AuthenticatedPollsIndexRoute
   '/_authenticated/sent/': typeof AuthenticatedSentIndexRoute
 }
 export interface FileRouteTypes {
@@ -155,7 +182,10 @@ export interface FileRouteTypes {
     | '/upload'
     | '/batch/$id'
     | '/photo/$id'
+    | '/polls/$id'
+    | '/polls/new'
     | '/sent/$id'
+    | '/polls/'
     | '/sent/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -169,7 +199,10 @@ export interface FileRouteTypes {
     | '/upload'
     | '/batch/$id'
     | '/photo/$id'
+    | '/polls/$id'
+    | '/polls/new'
     | '/sent/$id'
+    | '/polls'
     | '/sent'
   id:
     | '__root__'
@@ -185,7 +218,10 @@ export interface FileRouteTypes {
     | '/_authenticated/upload'
     | '/_authenticated/batch/$id'
     | '/_authenticated/photo/$id'
+    | '/_authenticated/polls/$id'
+    | '/_authenticated/polls/new'
     | '/_authenticated/sent/$id'
+    | '/_authenticated/polls/'
     | '/_authenticated/sent/'
   fileRoutesById: FileRoutesById
 }
@@ -274,12 +310,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSentIndexRouteImport
       parentRoute: typeof AuthenticatedSentRoute
     }
+    '/_authenticated/polls/': {
+      id: '/_authenticated/polls/'
+      path: '/polls'
+      fullPath: '/polls/'
+      preLoaderRoute: typeof AuthenticatedPollsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/sent/$id': {
       id: '/_authenticated/sent/$id'
       path: '/$id'
       fullPath: '/sent/$id'
       preLoaderRoute: typeof AuthenticatedSentIdRouteImport
       parentRoute: typeof AuthenticatedSentRoute
+    }
+    '/_authenticated/polls/new': {
+      id: '/_authenticated/polls/new'
+      path: '/polls/new'
+      fullPath: '/polls/new'
+      preLoaderRoute: typeof AuthenticatedPollsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/polls/$id': {
+      id: '/_authenticated/polls/$id'
+      path: '/polls/$id'
+      fullPath: '/polls/$id'
+      preLoaderRoute: typeof AuthenticatedPollsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/photo/$id': {
       id: '/_authenticated/photo/$id'
@@ -321,6 +378,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUploadRoute: typeof AuthenticatedUploadRoute
   AuthenticatedBatchIdRoute: typeof AuthenticatedBatchIdRoute
   AuthenticatedPhotoIdRoute: typeof AuthenticatedPhotoIdRoute
+  AuthenticatedPollsIdRoute: typeof AuthenticatedPollsIdRoute
+  AuthenticatedPollsNewRoute: typeof AuthenticatedPollsNewRoute
+  AuthenticatedPollsIndexRoute: typeof AuthenticatedPollsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -333,6 +393,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUploadRoute: AuthenticatedUploadRoute,
   AuthenticatedBatchIdRoute: AuthenticatedBatchIdRoute,
   AuthenticatedPhotoIdRoute: AuthenticatedPhotoIdRoute,
+  AuthenticatedPollsIdRoute: AuthenticatedPollsIdRoute,
+  AuthenticatedPollsNewRoute: AuthenticatedPollsNewRoute,
+  AuthenticatedPollsIndexRoute: AuthenticatedPollsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

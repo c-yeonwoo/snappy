@@ -876,3 +876,216 @@ export const setAllowWindow = createServerFn({ method: "POST" })
     if (error) throw dbError(error);
     return { allow_until };
   });
+
+// ----------------- 친구 A/B 사진 투표 -----------------
+
+// 두 유저가 수락된 친구인지
+async function areFriends(supabase: any, a: string, b: string) {
+  const { data } = await supabase
+    .from("friendships")
+    .select("id")
+    .eq("status", "accepted")
+    .or(`and(requester_id.eq.${a},addressee_id.eq.${b}),and(requester_id.eq.${b},addressee_id.eq.${a})`)
+    .maybeSingle();
+  return !!data;
+}
+
+async function signPollImages(paths: string[]) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.storage.from("poll-images").createSignedUrls(paths, 60 * 60);
+  return data ?? [];
+}
+
+// 투표 생성 — 후보 이미지 2~4장 (클라가 poll-images 버킷에 업로드한 경로)
+export const createPoll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        question: z.string().max(140).optional(),
+        image_paths: z.array(z.string().min(3).max(500)).min(2).max(4),
+        duration_hours: z.number().int().min(1).max(168).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const poll_id = crypto.randomUUID();
+    const expires_at = data.duration_hours
+      ? new Date(Date.now() + data.duration_hours * 3600_000).toISOString()
+      : null;
+    const { error: e1 } = await supabaseAdmin.from("polls").insert({
+      id: poll_id,
+      owner_id: context.userId,
+      question: data.question ?? null,
+      status: "open",
+      expires_at,
+    });
+    if (e1) throw dbError(e1);
+    const { error: e2 } = await supabaseAdmin.from("poll_options").insert(
+      data.image_paths.map((p, i) => ({ poll_id, image_path: p, position: i })),
+    );
+    if (e2) throw dbError(e2);
+    return { id: poll_id };
+  });
+
+// 내가 만든 투표 목록 (+ 총 투표수)
+export const getMyPolls = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: polls } = await supabaseAdmin
+      .from("polls")
+      .select("id, question, status, expires_at, created_at, poll_options(id, image_path, position), poll_votes(id)")
+      .eq("owner_id", context.userId)
+      .order("created_at", { ascending: false });
+    const list = polls ?? [];
+    const firstPaths = list.map((p: any) => (p.poll_options ?? []).sort((a: any, b: any) => a.position - b.position)[0]?.image_path).filter(Boolean);
+    const signed = await signPollImages(firstPaths);
+    let si = 0;
+    const items = list.map((p: any) => {
+      const opts = (p.poll_options ?? []).sort((a: any, b: any) => a.position - b.position);
+      const cover = opts[0] ? (signed[si++]?.signedUrl ?? null) : null;
+      return {
+        id: p.id,
+        question: p.question,
+        status: p.status,
+        expires_at: p.expires_at,
+        created_at: p.created_at,
+        option_count: opts.length,
+        vote_count: (p.poll_votes ?? []).length,
+        cover_url: cover,
+      };
+    });
+    return { polls: items };
+  });
+
+// 친구들이 만든 '열린' 투표 (내가 투표할 대상)
+export const getFriendPolls = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // 내 친구 id 수집
+    const { data: fr } = await supabaseAdmin
+      .from("friendships")
+      .select("requester_id, addressee_id")
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${context.userId},addressee_id.eq.${context.userId}`);
+    const friendIds = (fr ?? []).map((f: any) => (f.requester_id === context.userId ? f.addressee_id : f.requester_id));
+    if (friendIds.length === 0) return { polls: [] };
+
+    const { data: polls } = await supabaseAdmin
+      .from("polls")
+      .select("id, owner_id, question, status, expires_at, created_at, poll_options(id, image_path, position), poll_votes(voter_id)")
+      .in("owner_id", friendIds)
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
+    const list = (polls ?? []).filter((p: any) => !(p.poll_votes ?? []).some((v: any) => v.voter_id === context.userId));
+
+    const ownerIds = Array.from(new Set(list.map((p: any) => p.owner_id)));
+    const { data: owners } = await supabaseAdmin.from("profiles").select("id, handle, display_name").in("id", ownerIds.length ? ownerIds : ["00000000-0000-0000-0000-000000000000"]);
+    const ownerMap: Record<string, any> = {};
+    (owners ?? []).forEach((o: any) => { ownerMap[o.id] = o; });
+
+    const firstPaths = list.map((p: any) => (p.poll_options ?? []).sort((a: any, b: any) => a.position - b.position)[0]?.image_path).filter(Boolean);
+    const signed = await signPollImages(firstPaths);
+    let si = 0;
+    const items = list.map((p: any) => {
+      const opts = (p.poll_options ?? []).sort((a: any, b: any) => a.position - b.position);
+      return {
+        id: p.id,
+        question: p.question,
+        created_at: p.created_at,
+        option_count: opts.length,
+        owner: ownerMap[p.owner_id] ?? null,
+        cover_url: opts[0] ? (signed[si++]?.signedUrl ?? null) : null,
+      };
+    });
+    return { polls: items };
+  });
+
+// 투표 상세 — 옵션·서명URL·내 투표·집계. 본인 또는 친구만.
+export const getPoll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: poll } = await supabaseAdmin
+      .from("polls")
+      .select("id, owner_id, question, status, expires_at, created_at, poll_options(id, image_path, position), poll_votes(option_id, voter_id)")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!poll) throw new Error("투표를 찾을 수 없어요");
+    const isOwner = poll.owner_id === context.userId;
+    if (!isOwner && !(await areFriends(supabaseAdmin, context.userId, poll.owner_id))) {
+      throw new Error("이 투표를 볼 수 없어요");
+    }
+
+    const opts = (poll.poll_options ?? []).sort((a: any, b: any) => a.position - b.position);
+    const votes = poll.poll_votes ?? [];
+    const myVote = votes.find((v: any) => v.voter_id === context.userId)?.option_id ?? null;
+    const revealed = isOwner || !!myVote || poll.status === "closed";
+    const signed = await signPollImages(opts.map((o: any) => o.image_path));
+    const countByOption: Record<string, number> = {};
+    votes.forEach((v: any) => { countByOption[v.option_id] = (countByOption[v.option_id] ?? 0) + 1; });
+
+    const { data: owner } = await supabaseAdmin.from("profiles").select("handle, display_name").eq("id", poll.owner_id).maybeSingle();
+
+    return {
+      id: poll.id,
+      question: poll.question,
+      status: poll.status,
+      expires_at: poll.expires_at,
+      is_owner: isOwner,
+      my_vote: myVote,
+      revealed,
+      total_votes: votes.length,
+      owner,
+      options: opts.map((o: any, i: number) => ({
+        id: o.id,
+        image_url: signed[i]?.signedUrl ?? null,
+        votes: revealed ? (countByOption[o.id] ?? 0) : null,
+      })),
+    };
+  });
+
+// 투표하기 — 친구만, 열린 투표, 1인 1표
+export const votePoll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ poll_id: z.string().uuid(), option_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: poll } = await supabaseAdmin
+      .from("polls")
+      .select("id, owner_id, status, expires_at, poll_options(id)")
+      .eq("id", data.poll_id)
+      .maybeSingle();
+    if (!poll) throw new Error("투표를 찾을 수 없어요");
+    if (poll.owner_id === context.userId) throw new Error("내 투표에는 투표할 수 없어요");
+    if (poll.status !== "open" || (poll.expires_at && new Date(poll.expires_at).getTime() < Date.now())) {
+      throw new Error("이미 마감된 투표예요");
+    }
+    if (!(await areFriends(supabaseAdmin, context.userId, poll.owner_id))) throw new Error("친구만 투표할 수 있어요");
+    if (!(poll.poll_options ?? []).some((o: any) => o.id === data.option_id)) throw new Error("잘못된 선택지예요");
+
+    const { error } = await supabaseAdmin
+      .from("poll_votes")
+      .upsert({ poll_id: data.poll_id, option_id: data.option_id, voter_id: context.userId }, { onConflict: "poll_id,voter_id" });
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+// 투표 마감 (소유자)
+export const closePoll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("polls")
+      .update({ status: "closed" })
+      .eq("id", data.id)
+      .eq("owner_id", context.userId);
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
