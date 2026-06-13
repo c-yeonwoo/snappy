@@ -2,6 +2,7 @@
 // AI 보정 플로우 (버튼 + 모달). 소장한(원본 접근 가능) 사진에서 사용.
 // mock 모드: 클라 캔버스 보정(비용 0). real 모드(fal.ai 키): 서버 AI 보정.
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,8 +109,8 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
         <Sparkles className="mr-1.5 h-4 w-4" /> AI로 더 예쁘게 · {ENHANCE_COST} 크레딧
       </Button>
 
-      {open && (
-        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 flex-col bg-card">
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] mx-auto flex w-full max-w-[480px] flex-col bg-card">
           {/* 상단바 */}
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <h2 className="font-display inline-flex items-center gap-1.5 text-lg font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
@@ -164,7 +165,8 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
               {savedUrl ? "내 보정본이 저장됐어요." : mode === "real" ? "AI가 화질을 개선해요. 저장 시 크레딧이 차감돼요." : "스타일을 골라 미리보고, 저장할 때 크레딧이 차감돼요."}
             </p>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
