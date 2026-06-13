@@ -54,7 +54,7 @@ function AuthedLayout() {
     { to: "/sent", icon: Images, label: "보낸 사진" },
     { to: "/profile", icon: User, label: "나" },
   ] as const;
-  const active = (to: string) => loc.pathname === to;
+  const active = (to: string) => loc.pathname === to || loc.pathname.startsWith(to + "/");
   return (
     <div className="min-h-screen pb-24">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">

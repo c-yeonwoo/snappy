@@ -931,6 +931,49 @@ export const createPoll = createServerFn({ method: "POST" })
     return { id: poll_id };
   });
 
+// 받은 묶음에서 바로 투표 생성 — 친구는 내 워터마크 사진에 RLS 접근이 없으므로
+// 워터마크 컷을 poll-images 로 복사해 후보로 만든다. (핵심 루프 ↔ 투표 직결)
+export const createPollFromBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batch_id: z.string().uuid(), question: z.string().max(140).optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // 내가 받은(피사체) 묶음의 아직 안 가져간 컷
+    const { data: photos, error } = await supabaseAdmin
+      .from("photos")
+      .select("id, watermarked_path, status, created_at")
+      .eq("batch_id", data.batch_id)
+      .eq("subject_id", context.userId)
+      .eq("status", "available")
+      .order("created_at", { ascending: true })
+      .limit(4);
+    if (error) throw dbError(error);
+    const list = photos ?? [];
+    if (list.length < 2) throw new Error("투표하려면 후보가 2장 이상 필요해요");
+
+    // 워터마크본 → poll-images 복사
+    const paths: string[] = [];
+    for (const ph of list) {
+      const { data: blob, error: dlErr } = await supabaseAdmin.storage.from("photos-watermarked").download(ph.watermarked_path);
+      if (dlErr || !blob) throw dbError(dlErr);
+      const newPath = `${context.userId}/${crypto.randomUUID()}.jpg`;
+      const up = await supabaseAdmin.storage.from("poll-images").upload(newPath, blob, { contentType: "image/jpeg", upsert: false });
+      if (up.error) throw dbError(up.error);
+      paths.push(newPath);
+    }
+
+    const poll_id = crypto.randomUUID();
+    const { error: e1 } = await supabaseAdmin.from("polls").insert({
+      id: poll_id, owner_id: context.userId, question: data.question ?? null, status: "open",
+    });
+    if (e1) throw dbError(e1);
+    const { error: e2 } = await supabaseAdmin.from("poll_options").insert(
+      paths.map((p, i) => ({ poll_id, image_path: p, position: i })),
+    );
+    if (e2) throw dbError(e2);
+    return { id: poll_id };
+  });
+
 // 내가 만든 투표 목록 (+ 총 투표수)
 export const getMyPolls = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

@@ -4,10 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
-import { getBatch, purchasePhotos, removePhoto, reportPhoto } from "@/lib/photos.functions";
+import { getBatch, purchasePhotos, removePhoto, reportPhoto, createPollFromBatch } from "@/lib/photos.functions";
 import { formatCredit, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2, Vote } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/batch/$id")({
   head: () => ({ meta: [{ title: "묶음 — Snappy" }] }),
@@ -22,6 +22,7 @@ function BatchPage() {
   const buyFn = useServerFn(purchasePhotos);
   const removeFn = useServerFn(removePhoto);
   const reportFn = useServerFn(reportPhoto);
+  const askFn = useServerFn(createPollFromBatch);
 
   const { data, isLoading, isError } = useQuery({ queryKey: ["batch", id], queryFn: () => batchFn({ data: { batch_id: id } }) });
   const photos = data?.photos ?? [];
@@ -70,6 +71,20 @@ function BatchPage() {
       await refresh();
     } catch (e: any) {
       toast.error(e?.message ?? "소장에 실패했어요");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function askFriends() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await askFn({ data: { batch_id: id } });
+      toast.success("투표를 만들었어요! 친구들이 골라줄 거예요");
+      navigate({ to: "/polls/$id", params: { id: res.id } });
+    } catch (e: any) {
+      toast.error(e?.message ?? "투표 생성 실패");
     } finally {
       setBusy(false);
     }
@@ -222,6 +237,13 @@ function BatchPage() {
             <p className="rounded-full bg-secondary py-3 text-center text-sm font-semibold text-muted-foreground">넘기면서 마음에 드는 컷을 담아보세요</p>
           ) : (
             <p className="rounded-full bg-secondary py-3 text-center text-sm font-semibold text-muted-foreground">이 묶음은 모두 보관했어요</p>
+          )}
+
+          {/* 핵심 루프 ↔ 투표: 뭘 소장할지 친구에게 물어보기 */}
+          {selectedList.length === 0 && availableCount >= 2 && (
+            <Button variant="ghost" className="mt-2 w-full rounded-full text-muted-foreground" onClick={askFriends} disabled={busy}>
+              <Vote className="mr-1.5 h-4 w-4" /> 뭐가 제일 잘 나왔어? 친구한테 물어보기
+            </Button>
           )}
 
           {ownedPhotos.length > 1 && (
