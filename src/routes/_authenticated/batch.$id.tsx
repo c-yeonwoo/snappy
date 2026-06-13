@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { getBatch, purchasePhotos, removePhoto, reportPhoto, createPollFromBatch } from "@/lib/photos.functions";
+import { ConfirmModal, PromptModal } from "@/components/confirm-modal";
 import { formatCredit, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2, Vote } from "lucide-react";
@@ -32,6 +33,8 @@ function BatchPage() {
   const [busy, setBusy] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (!api) return;
@@ -107,14 +110,19 @@ function BatchPage() {
       await new Promise((r) => setTimeout(r, 350));
     }
   }
-  async function remove(pid: string) {
-    if (!window.confirm("이 사진을 받은함에서 삭제할까요? 되돌릴 수 없어요.")) return;
-    try { await removeFn({ data: { id: pid } }); toast.success("삭제했어요"); await refresh(); } catch (e: any) { toast.error(e?.message ?? "삭제 실패"); }
+  async function doRemove() {
+    if (!removeTarget) return;
+    setBusy(true);
+    try { await removeFn({ data: { id: removeTarget } }); toast.success("삭제했어요"); setRemoveTarget(null); await refresh(); }
+    catch (e: any) { toast.error(e?.message ?? "삭제 실패"); }
+    finally { setBusy(false); }
   }
-  async function report(pid: string) {
-    const reason = window.prompt("신고 사유를 입력해주세요");
-    if (!reason || !reason.trim()) return;
-    try { await reportFn({ data: { id: pid, reason: reason.trim() } }); toast.success("신고가 접수됐어요"); await refresh(); } catch (e: any) { toast.error(e?.message ?? "신고 실패"); }
+  async function doReport(reason: string) {
+    if (!reportTarget) return;
+    setBusy(true);
+    try { await reportFn({ data: { id: reportTarget, reason } }); toast.success("신고가 접수됐어요"); setReportTarget(null); await refresh(); }
+    catch (e: any) { toast.error(e?.message ?? "신고 실패"); }
+    finally { setBusy(false); }
   }
 
   if (isLoading) {
@@ -258,16 +266,37 @@ function BatchPage() {
           <div className="mt-4 flex items-center justify-center gap-5 text-xs font-semibold text-muted-foreground">
             {!cur.is_owned && (
               <>
-                <button onClick={() => report(cur.id)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline"><Flag className="h-3 w-3" /> 신고</button>
+                <button onClick={() => setReportTarget(cur.id)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline"><Flag className="h-3 w-3" /> 신고</button>
                 <span className="text-border">|</span>
               </>
             )}
-            <button onClick={() => remove(cur.id)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
+            <button onClick={() => setRemoveTarget(cur.id)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
               <Trash2 className="h-3 w-3" /> {cur.is_owned ? "보관함에서 삭제" : "삭제"}
             </button>
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!removeTarget}
+        title={cur?.is_owned ? "보관함에서 삭제할까요?" : "이 사진을 삭제할까요?"}
+        description={cur?.is_owned ? "보관함에서 사라져요. (이미 받은 원본 파일은 기기에 남아요)" : "받은함에서 사라지고 되돌릴 수 없어요."}
+        confirmLabel="삭제하기"
+        destructive
+        busy={busy}
+        onConfirm={doRemove}
+        onClose={() => setRemoveTarget(null)}
+      />
+      <PromptModal
+        open={!!reportTarget}
+        title="사진 신고"
+        description="사유를 알려주시면 검토 후 처리해요. 접수 즉시 내 받은함에서 숨겨집니다."
+        placeholder="예: 원치 않는 사진이에요"
+        confirmLabel="신고하기"
+        busy={busy}
+        onConfirm={doReport}
+        onClose={() => setReportTarget(null)}
+      />
     </div>
   );
 }

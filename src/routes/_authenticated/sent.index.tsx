@@ -1,10 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMySent, cancelPhotos } from "@/lib/photos.functions";
+import { useQuery } from "@tanstack/react-query";
+import { getMySent } from "@/lib/photos.functions";
 import { useState } from "react";
 import { Coins, Images } from "lucide-react";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/sent/")({
   head: () => ({ meta: [{ title: "보낸 사진 — Snappy" }] }),
@@ -13,8 +12,6 @@ export const Route = createFileRoute("/_authenticated/sent/")({
 
 function SentPage() {
   const fn = useServerFn(getMySent);
-  const cancelFn = useServerFn(cancelPhotos);
-  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["sent"], queryFn: () => fn() });
   const [tab, setTab] = useState<"sent" | "history">("sent");
 
@@ -36,20 +33,6 @@ function SentPage() {
     return Array.from(m.values());
   }
   const groups = group(photos);
-
-  async function cancel(g: typeof photos) {
-    const ids = g.filter((p) => p.status === "available").map((p) => p.id);
-    if (ids.length === 0) return;
-    if (!window.confirm(`대기 중 ${ids.length}장을 취소할까요? 상대 받은함에서도 사라져요.`)) return;
-    try {
-      await cancelFn({ data: { ids } });
-      toast.success("전송을 취소했어요");
-      qc.invalidateQueries({ queryKey: ["sent"] });
-      qc.invalidateQueries({ queryKey: ["feed"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "취소 실패");
-    }
-  }
 
   return (
     <div className="space-y-6">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSentBatch, cancelPhotos, hideSentBatch } from "@/lib/photos.functions";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { toast } from "sonner";
 import { ArrowLeft, X, Trash2 } from "lucide-react";
 
@@ -27,8 +28,11 @@ function SentBatchPage() {
   const soldCount = photos.filter((p) => p.status === "sold").length;
   const allFinal = photos.length > 0 && available.length === 0; // 모두 최종 상태
 
+  const [busy, setBusy] = useState(false);
+  const [confirmHide, setConfirmHide] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
   async function hideHistory() {
-    if (!window.confirm("이 묶음을 내 보낸 목록에서 삭제할까요?")) return;
     setBusy(true);
     try {
       await hideFn({ data: { batch_id: id } });
@@ -37,16 +41,13 @@ function SentBatchPage() {
       navigate({ to: "/sent" });
     } catch (e: any) {
       toast.error(e?.message ?? "삭제 실패");
-    } finally {
       setBusy(false);
     }
   }
-  const [busy, setBusy] = useState(false);
 
   async function cancelAll() {
     const ids = available.map((p) => p.id);
     if (ids.length === 0) return;
-    if (!window.confirm(`대기 중 ${ids.length}장을 취소할까요? 상대 받은함에서도 사라져요.`)) return;
     setBusy(true);
     try {
       await cancelFn({ data: { ids } });
@@ -56,7 +57,6 @@ function SentBatchPage() {
       navigate({ to: "/sent" });
     } catch (e: any) {
       toast.error(e?.message ?? "취소 실패");
-    } finally {
       setBusy(false);
     }
   }
@@ -80,7 +80,7 @@ function SentBatchPage() {
           <ArrowLeft className="h-4 w-4" /> 보낸 사진
         </button>
         {allFinal && (
-          <button onClick={hideHistory} disabled={busy} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive">
+          <button onClick={() => setConfirmHide(true)} disabled={busy} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-destructive/40 hover:text-destructive">
             <Trash2 className="h-3 w-3" /> 기록 삭제
           </button>
         )}
@@ -121,13 +121,34 @@ function SentBatchPage() {
       {/* 전송 취소 */}
       {available.length > 0 && (
         <button
-          onClick={cancelAll}
+          onClick={() => setConfirmCancel(true)}
           disabled={busy}
           className="flex w-full items-center justify-center gap-1.5 rounded-full border border-border/60 py-3 text-sm font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-40"
         >
           <X className="h-3.5 w-3.5" /> 대기 중 {available.length}장 전송 취소
         </button>
       )}
+
+      <ConfirmModal
+        open={confirmHide}
+        title="기록을 삭제할까요?"
+        description="이 묶음이 내 보낸 목록에서 사라져요. (상대가 받은 사진에는 영향 없어요)"
+        confirmLabel="삭제하기"
+        destructive
+        busy={busy}
+        onConfirm={hideHistory}
+        onClose={() => setConfirmHide(false)}
+      />
+      <ConfirmModal
+        open={confirmCancel}
+        title={`대기 중 ${available.length}장을 취소할까요?`}
+        description="상대 받은함에서도 사라지고 되돌릴 수 없어요."
+        confirmLabel="전송 취소"
+        destructive
+        busy={busy}
+        onConfirm={cancelAll}
+        onClose={() => setConfirmCancel(false)}
+      />
     </div>
   );
 }
