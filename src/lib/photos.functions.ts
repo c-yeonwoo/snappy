@@ -1137,6 +1137,33 @@ export const closePoll = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// 투표 삭제 (소유자) — 옵션/투표는 FK CASCADE, 후보 이미지도 best-effort 정리
+export const deletePoll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // 소유자 확인 + 후보 이미지 경로 수집
+    const { data: poll } = await supabaseAdmin
+      .from("polls")
+      .select("owner_id, poll_options(image_path)")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!poll) throw new Error("투표를 찾을 수 없어요");
+    if (poll.owner_id !== context.userId) throw new Error("내 투표만 삭제할 수 있어요");
+
+    const paths = (poll.poll_options ?? []).map((o: any) => o.image_path).filter(Boolean);
+    if (paths.length) await supabaseAdmin.storage.from("poll-images").remove(paths); // best-effort
+
+    const { error } = await supabaseAdmin
+      .from("polls")
+      .delete()
+      .eq("id", data.id)
+      .eq("owner_id", context.userId);
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
 // ----------------- AI 보정 (크레딧 sink) -----------------
 
 // 원본 접근 권한이 있는 사진인지 (수집한 피사체 or 업로더)

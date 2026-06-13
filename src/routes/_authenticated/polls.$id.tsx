@@ -3,10 +3,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getPoll, votePoll, closePoll } from "@/lib/photos.functions";
+import { getPoll, votePoll, closePoll, deletePoll } from "@/lib/photos.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Trophy, Lock, X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import { ArrowLeft, Check, Trophy, Lock, X, ChevronLeft, ChevronRight, Maximize2, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/polls/$id")({
   head: () => ({ meta: [{ title: "투표 — Snappy" }] }),
@@ -20,10 +20,12 @@ function PollDetailPage() {
   const pollFn = useServerFn(getPoll);
   const voteFn = useServerFn(votePoll);
   const closeFn = useServerFn(closePoll);
+  const deleteFn = useServerFn(deletePoll);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { data, isLoading, isError } = useQuery({ queryKey: ["poll", id], queryFn: () => pollFn({ data: { id } }) });
 
@@ -62,6 +64,20 @@ function PollDetailPage() {
     }
   }
 
+  async function doDelete() {
+    setBusy(true);
+    try {
+      await deleteFn({ data: { id } });
+      toast.success("투표를 삭제했어요");
+      qc.invalidateQueries({ queryKey: ["myPolls"] });
+      qc.invalidateQueries({ queryKey: ["friendPolls"] });
+      navigate({ to: "/polls" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "삭제 실패");
+      setBusy(false);
+    }
+  }
+
   if (isLoading) return <p className="text-muted-foreground">불러오는 중…</p>;
   if (isError || !data) {
     return (
@@ -83,10 +99,17 @@ function PollDetailPage() {
         <button onClick={() => navigate({ to: "/polls" })} className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground">
           <ArrowLeft className="h-4 w-4" /> 고민
         </button>
-        {is_owner && status === "open" && (
-          <button onClick={() => setConfirmClose(true)} disabled={busy} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-foreground/40">
-            투표 마감
-          </button>
+        {is_owner && (
+          <div className="flex items-center gap-2">
+            {status === "open" && (
+              <button onClick={() => setConfirmClose(true)} disabled={busy} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-foreground/40">
+                투표 마감
+              </button>
+            )}
+            <button onClick={() => setConfirmDelete(true)} disabled={busy} aria-label="투표 삭제" className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-destructive/40 hover:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -200,6 +223,20 @@ function PollDetailPage() {
             <div className="mt-4 flex gap-2">
               <button onClick={() => setConfirmClose(false)} disabled={busy} className="flex-1 rounded-full border border-border py-3 text-sm font-semibold">닫기</button>
               <button onClick={doClose} disabled={busy} className="flex-1 rounded-full bg-foreground py-3 text-sm font-semibold text-background disabled:opacity-50">{busy ? "처리 중…" : "마감하기"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 투표 삭제 확인 모달 */}
+      {confirmDelete && (
+        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 items-center justify-center bg-foreground/40 px-6 backdrop-blur-sm" onClick={() => !busy && setConfirmDelete(false)}>
+          <div className="w-full rounded-[1.5rem] border border-white/60 bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-display text-lg font-extrabold">투표를 삭제할까요?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">투표와 받은 표가 모두 사라지고 되돌릴 수 없어요.</p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setConfirmDelete(false)} disabled={busy} className="flex-1 rounded-full border border-border py-3 text-sm font-semibold">닫기</button>
+              <button onClick={doDelete} disabled={busy} className="flex-1 rounded-full bg-destructive py-3 text-sm font-semibold text-destructive-foreground disabled:opacity-50">{busy ? "삭제 중…" : "삭제하기"}</button>
             </div>
           </div>
         </div>
