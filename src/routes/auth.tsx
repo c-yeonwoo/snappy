@@ -49,11 +49,8 @@ function AuthPage() {
     });
   }
 
-  async function signInWithKakao() {
-    await supabase.auth.signInWithOAuth({
-      provider: "kakao",
-      options: { redirectTo: `${window.location.origin}/feed` },
-    });
+  function signInWithKakao() {
+    toast.info("카카오 로그인은 준비 중이에요");
   }
 
   async function signUp(e: React.FormEvent) {
