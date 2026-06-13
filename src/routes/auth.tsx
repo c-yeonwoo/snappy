@@ -86,7 +86,7 @@ function AuthPage() {
         <div className="w-full max-w-md rounded-[1.75rem] border border-white/60 bg-card/90 p-7 shadow-[0_30px_80px_-30px_rgba(10,10,10,0.18)] backdrop-blur">
           <span className="chip">어서와요</span>
           <h1 className="font-display mt-3 text-3xl font-extrabold">시작해볼까요?</h1>
-          <p className="mt-1 text-sm text-muted-foreground">이메일로 가입하고 사진을 주고받아요.</p>
+          <p className="mt-1 text-sm text-muted-foreground">친구가 찍어준 내 인생샷, 원본으로 받아와요.</p>
           <Tabs defaultValue="signin" className="mt-6">
             <TabsList className="grid w-full grid-cols-2 rounded-full bg-secondary p-1">
               <TabsTrigger value="signin">로그인</TabsTrigger>

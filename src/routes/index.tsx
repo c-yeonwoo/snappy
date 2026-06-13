@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Camera, ArrowRight, Coins, CheckCheck, ShieldCheck } from "lucide-react";
+import { Camera, ArrowRight, ImageDown, Vote, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Snappy — 친구들이 찍어준 스냅샷" },
-      { name: "description", content: "친구들이 찍어준 사진을 피드로 받고, 마음에 드는 컷만 골라 소장하세요." },
-      { property: "og:title", content: "Snappy — 친구들이 찍어준 스냅샷" },
-      { property: "og:description", content: "ID 검색으로 빠르게 보내고, 피드에서 골라 받는 캐주얼 포토 마켓." },
+      { title: "Snappy — 남이 찍어준 내 인생샷" },
+      { name: "description", content: "친구가 찍어준 내 인생샷을 카톡 화질 말고 원본으로. 찍어준 만큼 크레딧이 쌓여요." },
+      { property: "og:title", content: "Snappy — 남이 찍어준 내 인생샷" },
+      { property: "og:description", content: "친구가 찍어준 내 사진을 원본으로 받아와, 친구 투표로 고르고 AI로 완성." },
     ],
   }),
   component: Index,
@@ -54,20 +54,21 @@ function Index() {
           </div>
 
           <h1 className="font-display mt-6 text-[2.5rem] font-extrabold leading-[1.05]">
-            찍어주고,<br />
-            <span className="box-decoration-clone rounded-xl bg-accent/70 px-2 text-foreground">골라 받아요.</span>
+            남이 찍어준<br />
+            <span className="box-decoration-clone rounded-xl bg-accent/70 px-2 text-foreground">내 인생샷.</span>
           </h1>
           <p className="mt-5 text-sm text-muted-foreground">
-            친구가 보낸 스냅에서 마음에 드는 컷만 소장하고, 원본을 가져가세요.
+            친구 폰에 잠든 잘 나온 내 사진, 카톡 화질 말고 <b className="text-foreground">원본</b>으로 받아와요.
+            찍어준 만큼 <b className="text-foreground">크레딧</b>이 쌓이니까, 달라고 하기 민망할 일도 없어요.
           </p>
         </section>
 
         {/* Trust row */}
         <section className="mt-8 grid grid-cols-3 gap-2">
           {[
-            { icon: Coins, t: "찍을수록 수익" },
-            { icon: CheckCheck, t: "마음에 드는 컷만" },
-            { icon: ShieldCheck, t: "원본은 안전하게" },
+            { icon: ImageDown, t: "원본 화질로" },
+            { icon: Vote, t: "친구가 골라줌" },
+            { icon: Sparkles, t: "AI로 완성" },
           ].map((f) => (
             <div key={f.t} className="rounded-2xl border border-white/70 bg-card/80 p-2.5 text-center backdrop-blur">
               <div className="mx-auto grid h-7 w-7 place-items-center rounded-xl bg-secondary"><f.icon className="h-3.5 w-3.5" /></div>
