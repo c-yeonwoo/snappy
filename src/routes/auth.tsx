@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,15 +43,10 @@ function AuthPage() {
   }
 
   async function signInWithGoogle() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/feed` },
     });
-    if (result.error) {
-      toast.error("구글 로그인에 실패했어요");
-      return;
-    }
-    if (result.redirected) return;
-    navigate({ to: "/feed" });
   }
 
   async function signInWithKakao() {
