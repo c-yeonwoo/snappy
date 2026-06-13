@@ -114,14 +114,14 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
           className="fixed inset-0 z-[100] mx-auto flex max-w-[480px] items-center justify-center overflow-y-auto bg-foreground/40 px-4 py-6 backdrop-blur-md"
           onClick={() => !busy && setOpen(false)}
         >
-          <div className="my-auto w-full max-w-[400px] overflow-hidden rounded-[1.75rem] border border-white/60 bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 pt-4">
-              <h2 className="font-display inline-flex items-center gap-1.5 text-base font-extrabold"><Sparkles className="h-4 w-4 text-primary" /> AI 보정</h2>
-              <button onClick={() => !busy && setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>
+          <div className="my-auto w-full max-w-[400px] overflow-hidden rounded-[1.75rem] border border-white/60 bg-card p-4 shadow-[0_30px_80px_-30px_rgba(10,10,10,0.35)]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <span className="chip"><Sparkles className="h-3.5 w-3.5" /> AI 보정</span>
+              <button onClick={() => !busy && setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary"><X className="h-4 w-4" /></button>
             </div>
 
             {/* 원본 비율 그대로 + 꾹 누르면 원본 비교 */}
-            <div className="relative mt-3 grid place-items-center overflow-hidden bg-secondary">
+            <div className="relative mt-4 grid place-items-center overflow-hidden rounded-2xl border border-border/60 bg-secondary">
               {(holding ? originalUrl : (savedUrl ?? preview)) && (
                 <img
                   src={(holding ? originalUrl : (savedUrl ?? preview)) ?? undefined}
@@ -132,35 +132,36 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
                   onPointerUp={() => setHolding(false)}
                   onPointerLeave={() => setHolding(false)}
                   onPointerCancel={() => setHolding(false)}
-                  className="block max-h-[60vh] w-full select-none object-contain"
+                  className="block max-h-[58vh] w-full select-none object-contain"
                 />
               )}
-              {busy && <div className="absolute inset-0 grid place-items-center bg-foreground/20 text-sm font-semibold text-background">처리 중…</div>}
-              <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
-                {holding ? "원본" : savedUrl ? "보정 완료" : "보정본"}
+              {busy && <div className="absolute inset-0 grid place-items-center bg-foreground/30 text-sm font-semibold text-background backdrop-blur-sm">처리 중…</div>}
+              <span className="absolute left-2.5 top-2.5 rounded-full bg-foreground/80 px-2.5 py-1 text-[10px] font-bold text-background backdrop-blur">
+                {holding ? "원본" : savedUrl ? "보정 완료" : "보정본 미리보기"}
               </span>
             </div>
 
-            <div className="px-4 pb-4">
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">사진을 꾹 누르면 원본과 비교할 수 있어요</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {STYLES.map((s) => (
-                  <button key={s.key} disabled={busy || !!savedUrl} onClick={() => runPreview(s.key)}
-                    className={`rounded-full border py-2 text-xs font-semibold transition ${style === s.key ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"} disabled:opacity-50`}>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-              {savedUrl ? (
-                <Button className="mt-4 h-12 w-full rounded-full text-base" onClick={downloadResult}>
-                  <Download className="mr-1.5 h-4 w-4" /> 보정본 다운로드
-                </Button>
-              ) : (
-                <Button className="mt-4 h-12 w-full rounded-full text-base" onClick={save} disabled={busy || (mode === "mock" && !blob)}>
-                  {busy ? "처리 중…" : `${ENHANCE_COST} 크레딧으로 보정하기`}
-                </Button>
-              )}
+            <p className="mt-2.5 text-center text-[11px] text-muted-foreground">사진을 꾹 누르면 원본과 비교할 수 있어요</p>
+
+            {/* 스타일 세그먼트 컨트롤 */}
+            <div className="mt-3 inline-flex w-full rounded-full border border-border bg-secondary/60 p-1">
+              {STYLES.map((s) => (
+                <button key={s.key} disabled={busy || !!savedUrl} onClick={() => runPreview(s.key)}
+                  className={`flex-1 rounded-full py-2 text-xs font-semibold transition disabled:opacity-50 ${style === s.key ? "bg-foreground text-background shadow" : "text-muted-foreground"}`}>
+                  {s.label}
+                </button>
+              ))}
             </div>
+
+            {savedUrl ? (
+              <Button className="mt-3 h-12 w-full rounded-full text-base font-bold" onClick={downloadResult}>
+                <Download className="mr-1.5 h-4 w-4" /> 보정본 다운로드
+              </Button>
+            ) : (
+              <Button className="mt-3 h-12 w-full rounded-full text-base font-bold" onClick={save} disabled={busy || (mode === "mock" && !blob)}>
+                {busy ? "처리 중…" : `${ENHANCE_COST} 크레딧으로 보정하기`}
+              </Button>
+            )}
           </div>
         </div>,
         document.body,
