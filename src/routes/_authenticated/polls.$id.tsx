@@ -23,6 +23,7 @@ function PollDetailPage() {
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const { data, isLoading, isError } = useQuery({ queryKey: ["poll", id], queryFn: () => pollFn({ data: { id } }) });
 
@@ -46,12 +47,12 @@ function PollDetailPage() {
     }
   }
 
-  async function close() {
-    if (!window.confirm("투표를 마감할까요? 마감하면 더 이상 투표할 수 없어요.")) return;
+  async function doClose() {
     setBusy(true);
     try {
       await closeFn({ data: { id } });
       toast.success("마감했어요");
+      setConfirmClose(false);
       qc.invalidateQueries({ queryKey: ["poll", id] });
       qc.invalidateQueries({ queryKey: ["myPolls"] });
     } catch (e: any) {
@@ -83,7 +84,7 @@ function PollDetailPage() {
           <ArrowLeft className="h-4 w-4" /> 고민
         </button>
         {is_owner && status === "open" && (
-          <button onClick={close} disabled={busy} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-foreground/40">
+          <button onClick={() => setConfirmClose(true)} disabled={busy} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-foreground/40">
             투표 마감
           </button>
         )}
@@ -186,6 +187,20 @@ function PollDetailPage() {
             ) : (
               <p className="text-center text-sm font-semibold text-background/70">{lightbox + 1}번 컷</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 투표 마감 확인 모달 */}
+      {confirmClose && (
+        <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[480px] -translate-x-1/2 items-center justify-center bg-foreground/40 px-6 backdrop-blur-sm" onClick={() => !busy && setConfirmClose(false)}>
+          <div className="w-full rounded-[1.5rem] border border-white/60 bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-display text-lg font-extrabold">투표를 마감할까요?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">마감하면 친구들이 더 이상 투표할 수 없어요. 결과는 계속 볼 수 있어요.</p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setConfirmClose(false)} disabled={busy} className="flex-1 rounded-full border border-border py-3 text-sm font-semibold">닫기</button>
+              <button onClick={doClose} disabled={busy} className="flex-1 rounded-full bg-foreground py-3 text-sm font-semibold text-background disabled:opacity-50">{busy ? "처리 중…" : "마감하기"}</button>
+            </div>
           </div>
         </div>
       )}
