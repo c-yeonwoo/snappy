@@ -62,10 +62,6 @@ function AuthPage() {
     });
   }
 
-  function signInWithNaver() {
-    toast.info("네이버 로그인은 준비 중이에요");
-  }
-
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -147,13 +143,6 @@ function AuthPage() {
                 <path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.7 1.56 5.08 3.94 6.56L4.8 21l4.32-2.3c.9.24 1.86.37 2.88.37 5.52 0 10-3.48 10-7.8S17.52 3 12 3z"/>
               </svg>
               <span className="flex-1 text-center">카카오로 로그인</span>
-            </button>
-            {/* 네이버 */}
-            <button onClick={signInWithNaver} className="flex w-full items-center gap-3 rounded-2xl bg-[#03C75A] px-4 py-[9px] text-sm font-bold text-white transition active:scale-[0.99]">
-              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="white">
-                <path d="M16.27 12.96L7.5 3H3v18h7.73V11.04L19.5 21H21V3h-4.73z"/>
-              </svg>
-              <span className="flex-1 text-center">네이버로 로그인</span>
             </button>
             {/* 구글 */}
             <button onClick={signInWithGoogle} className="flex w-full items-center gap-3 rounded-2xl border border-border bg-white px-4 py-[9px] text-sm font-bold text-foreground transition active:scale-[0.99]">
