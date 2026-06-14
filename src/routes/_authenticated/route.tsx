@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect, Link, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -22,7 +22,17 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayout() {
   const loc = useLocation();
+  const navigate = useNavigate();
   const friendsFn = useServerFn(getFriends);
+
+  // 로그아웃 상태에서 초대 링크를 열어 가입했으면, 로그인 후 클레임 페이지로 자동 복귀
+  useEffect(() => {
+    const t = localStorage.getItem("snappy_pending_claim");
+    if (t) {
+      localStorage.removeItem("snappy_pending_claim");
+      navigate({ to: "/claim/$token", params: { token: t } });
+    }
+  }, []);
   const feedFn = useServerFn(getMyFeed);
   const { data: friendsData } = useQuery({ queryKey: ["friends"], queryFn: () => friendsFn() });
   const { data: feedData } = useQuery({ queryKey: ["feed"], queryFn: () => feedFn() });

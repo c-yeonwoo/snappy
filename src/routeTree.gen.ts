@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as AuthenticatedUploadRouteImport } from './routes/_authenticated/upload'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSentRouteImport } from './routes/_authenticated/sent'
@@ -39,6 +40,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClaimTokenRoute = ClaimTokenRouteImport.update({
+  id: '/claim/$token',
+  path: '/claim/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedUploadRoute = AuthenticatedUploadRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/sent': typeof AuthenticatedSentRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
+  '/claim/$token': typeof ClaimTokenRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/polls/$id': typeof AuthenticatedPollsIdRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
+  '/claim/$token': typeof ClaimTokenRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/polls/$id': typeof AuthenticatedPollsIdRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/_authenticated/sent': typeof AuthenticatedSentRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/upload': typeof AuthenticatedUploadRoute
+  '/claim/$token': typeof ClaimTokenRoute
   '/_authenticated/batch/$id': typeof AuthenticatedBatchIdRoute
   '/_authenticated/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/_authenticated/polls/$id': typeof AuthenticatedPollsIdRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/sent'
     | '/settings'
     | '/upload'
+    | '/claim/$token'
     | '/batch/$id'
     | '/photo/$id'
     | '/polls/$id'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/upload'
+    | '/claim/$token'
     | '/batch/$id'
     | '/photo/$id'
     | '/polls/$id'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/_authenticated/sent'
     | '/_authenticated/settings'
     | '/_authenticated/upload'
+    | '/claim/$token'
     | '/_authenticated/batch/$id'
     | '/_authenticated/photo/$id'
     | '/_authenticated/polls/$id'
@@ -229,6 +241,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ClaimTokenRoute: typeof ClaimTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/claim/$token': {
+      id: '/claim/$token'
+      path: '/claim/$token'
+      fullPath: '/claim/$token'
+      preLoaderRoute: typeof ClaimTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/upload': {
@@ -405,6 +425,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ClaimTokenRoute: ClaimTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

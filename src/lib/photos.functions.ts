@@ -1290,3 +1290,73 @@ export const commitEnhancement = createServerFn({ method: "POST" })
       .createSignedUrl(data.enhanced_path, 60 * 10);
     return { ok: true, enhanced_url: signed?.signedUrl ?? null };
   });
+
+// ----------------- 초대-수령(invite-to-claim) -----------------
+
+function inviteError(e: { message?: string } | null | undefined) {
+  const msg = e?.message ?? "";
+  if (msg.includes("INVITE_NOT_FOUND")) return new Error("이미 받았거나 만료된 초대예요");
+  if (msg.includes("CANNOT_CLAIM_OWN")) return new Error("내가 보낸 초대는 받을 수 없어요");
+  return dbError(e);
+}
+
+// 비가입 친구에게 보낼 초대 생성 — 클라가 업로드한 경로들로 invite 행 생성, 공유 토큰 반환.
+export const createPhotoInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      photos: z.array(z.object({ original_path: z.string().min(3).max(500), watermarked_path: z.string().min(3).max(500) })).min(1).max(MAX_BATCH_SIZE),
+      note: z.string().max(280).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const token = `inv_${crypto.randomUUID().replace(/-/g, "")}`;
+    const { error } = await supabaseAdmin.from("photo_invites").insert({
+      inviter_id: context.userId,
+      token,
+      note: data.note ?? null,
+      photos: data.photos,
+    });
+    if (error) throw dbError(error);
+    return { token };
+  });
+
+// 초대 미리보기 (공개 — 토큰이 비밀키 역할). 로그인 전에도 inviter/사진 미리보기 노출.
+export const getInvite = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ token: z.string().min(8).max(80) }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: inv } = await supabaseAdmin
+      .from("photo_invites")
+      .select("inviter_id, note, photos, status, claimed_by")
+      .eq("token", data.token)
+      .maybeSingle();
+    if (!inv) return { found: false };
+    const { data: inviter } = await supabaseAdmin.from("profiles").select("handle, display_name").eq("id", inv.inviter_id).maybeSingle();
+    const paths = ((inv.photos ?? []) as any[]).map((p) => p.watermarked_path);
+    const signed = paths.length ? (await supabaseAdmin.storage.from("photos-watermarked").createSignedUrls(paths, 60 * 30)).data ?? [] : [];
+    return {
+      found: true,
+      status: inv.status,
+      note: inv.note,
+      inviter,
+      count: paths.length,
+      previews: signed.map((s: any) => s?.signedUrl ?? null),
+    };
+  });
+
+// 클레임 — 가입한 사용자가 초대 사진을 받음 (원자적 RPC: photos 생성 + 친구 + 보너스)
+export const claimInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ token: z.string().min(8).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin.rpc("claim_photo_invite", {
+      p_token: data.token,
+      p_claimer: context.userId,
+    });
+    if (error) throw inviteError(error);
+    const batchId = (rows as any[])?.[0]?.batch_id ?? null;
+    return { ok: true, batch_id: batchId };
+  });

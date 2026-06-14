@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { searchProfiles, createPhoto, getMyProfile, getFriends, sendFriendRequest, getMySent } from "@/lib/photos.functions";
+import { searchProfiles, createPhoto, createPhotoInvite, getMyProfile, getFriends, sendFriendRequest, getMySent } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { watermarkImage, compressOriginal } from "@/lib/watermark";
 import { toast } from "sonner";
-import { Upload, X, Film, Image as ImageIcon, Play, Lock, UserPlus, Users, Clock } from "lucide-react";
+import { Upload, X, Film, Image as ImageIcon, Play, Lock, UserPlus, Users, Clock, Link2, Copy, Share2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/upload")({
@@ -24,6 +24,7 @@ function UploadPage() {
   const navigate = useNavigate();
   const search = useServerFn(searchProfiles);
   const create = useServerFn(createPhoto);
+  const inviteFn = useServerFn(createPhotoInvite);
   const fetchProfile = useServerFn(getMyProfile);
   const friendsFn = useServerFn(getFriends);
   const sendReq = useServerFn(sendFriendRequest);
@@ -57,6 +58,7 @@ function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const MAX_UPLOAD_FILES = 20;
   const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -139,6 +141,48 @@ function UploadPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // 아직 Snappy를 안 쓰는 친구에게 — 링크로 초대해서 보내기
+  async function sendInvite() {
+    if (files.length === 0) return toast.error("보낼 사진을 먼저 골라주세요");
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) return toast.error("이미지 파일만 보내기 가능합니다.");
+      if (file.size > MAX_FILE_SIZE) return toast.error("파일 당 20MB 이하만 업로드할 수 있어요.");
+    }
+    setBusy(true);
+    try {
+      const { data: userResp } = await supabase.auth.getUser();
+      const uid = userResp.user!.id;
+      const photos: { original_path: string; watermarked_path: string }[] = [];
+      for (const file of files) {
+        const [originalBlob, watermarkedBlob] = await Promise.all([compressOriginal(file), watermarkImage(file, myHandle)]);
+        const pid = crypto.randomUUID();
+        const originalPath = `${uid}/${pid}.jpg`;
+        const watermarkedPath = `${uid}/wm_${pid}.jpg`;
+        const up1 = await supabase.storage.from("photos-original").upload(originalPath, originalBlob, { contentType: "image/jpeg" });
+        if (up1.error) throw up1.error;
+        const up2 = await supabase.storage.from("photos-watermarked").upload(watermarkedPath, watermarkedBlob, { contentType: "image/jpeg" });
+        if (up2.error) throw up2.error;
+        photos.push({ original_path: originalPath, watermarked_path: watermarkedPath });
+      }
+      const res = await inviteFn({ data: { photos, note: note || undefined } });
+      const link = `${window.location.origin}/claim/${res.token}`;
+      setInviteLink(link);
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try { await navigator.share({ title: "Snappy", text: "내가 찍어준 사진 받아 — 가입하면 둘 다 5크레딧!", url: link }); } catch {}
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "초대 링크 생성 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyInvite() {
+    if (!inviteLink) return;
+    try { await navigator.clipboard.writeText(inviteLink); toast.success("초대 링크를 복사했어요"); }
+    catch { toast.error("복사 실패"); }
   }
 
   return (
@@ -278,6 +322,35 @@ function UploadPage() {
         <Upload className="mr-2 h-4 w-4" />
         {busy ? "보내는 중…" : "사진 보내기"}
       </Button>
+
+      {/* 비가입 친구 → 링크로 초대 */}
+      <button
+        onClick={sendInvite}
+        disabled={busy}
+        className="flex w-full items-center justify-center gap-1.5 rounded-full border border-border py-3 text-sm font-semibold text-muted-foreground transition hover:border-foreground/40 disabled:opacity-40"
+      >
+        <Link2 className="h-4 w-4" /> 링크로 초대해서 보내기
+      </button>
+      <p className="text-center text-[11px] text-muted-foreground">아직 Snappy 안 쓰는 친구에게. 받으면 둘 다 +5 크레딧</p>
+
+      {/* 초대 링크 결과 */}
+      {inviteLink && (
+        <div className="fixed inset-0 z-[100] mx-auto flex max-w-[480px] items-center justify-center bg-foreground/40 px-6 backdrop-blur-md" onClick={() => setInviteLink(null)}>
+          <div className="w-full max-w-[400px] rounded-[1.75rem] border border-white/60 bg-card p-5 shadow-[0_30px_80px_-30px_rgba(10,10,10,0.35)]" onClick={(e) => e.stopPropagation()}>
+            <span className="chip"><Link2 className="h-3.5 w-3.5" /> 초대 링크</span>
+            <h2 className="font-display mt-3 text-lg font-extrabold">친구에게 링크를 보내세요</h2>
+            <p className="mt-1 text-sm text-muted-foreground">친구가 이 링크로 가입하면 사진을 받고, <b className="text-foreground">둘 다 +5 크레딧</b>이 쌓여요.</p>
+            <div className="mt-3 truncate rounded-2xl border border-border bg-secondary px-4 py-3 text-xs text-muted-foreground">{inviteLink}</div>
+            <div className="mt-3 flex gap-2">
+              <button onClick={copyInvite} className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border py-3 text-sm font-semibold"><Copy className="h-4 w-4" /> 복사</button>
+              {typeof navigator !== "undefined" && navigator.share && (
+                <button onClick={() => navigator.share({ title: "Snappy", text: "내가 찍어준 사진 받아!", url: inviteLink }).catch(() => {})} className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-foreground py-3 text-sm font-semibold text-background"><Share2 className="h-4 w-4" /> 공유</button>
+              )}
+            </div>
+            <button onClick={() => { setInviteLink(null); navigate({ to: "/sent" }); }} className="mt-2 w-full rounded-full py-2.5 text-sm font-semibold text-muted-foreground">완료</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
