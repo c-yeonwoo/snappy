@@ -8,6 +8,7 @@ import { getBatch, purchasePhotos, removePhoto, reportPhoto, createPollFromBatch
 import { ConfirmModal, PromptModal } from "@/components/confirm-modal";
 import { EnhanceFlow } from "@/components/enhance-flow";
 import { CreditNudge } from "@/components/credit-nudge";
+import { saveImage } from "@/lib/save-image";
 import { formatCredit, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2, Vote } from "lucide-react";
@@ -98,15 +99,11 @@ function BatchPage() {
   }
 
   async function download(url: string | null, pid: string) {
-    if (!url) return toast.error("원본을 불러올 수 없어요");
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const u = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = u; a.download = `snappy-${pid}.jpg`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(u);
-    } catch { toast.error("다운로드 실패"); }
+      await saveImage(url, `snappy-${pid}.jpg`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
+    }
   }
   async function downloadAll() {
     for (const p of ownedPhotos) {

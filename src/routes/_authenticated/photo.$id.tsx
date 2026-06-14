@@ -9,6 +9,7 @@ import { ArrowLeft, Download, ShieldCheck, MessageCircle, Camera, BookmarkCheck,
 import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
 import { EnhanceFlow } from "@/components/enhance-flow";
 import { CreditNudge } from "@/components/credit-nudge";
+import { saveImage } from "@/lib/save-image";
 import { relativeTime, formatCredit } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
@@ -85,20 +86,10 @@ function PhotoDetailPage() {
   }
 
   async function handleDownload() {
-    if (!originalUrl) return toast.error("원본을 불러올 수 없어요");
     try {
-      const res = await fetch(originalUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `snappy-${id}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("다운로드 실패");
+      await saveImage(originalUrl, `snappy-${id}.jpg`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
     }
   }
 

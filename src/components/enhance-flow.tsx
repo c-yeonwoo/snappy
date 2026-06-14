@@ -10,6 +10,7 @@ import { getEnhanceInfo, commitEnhancement, enhancePhotoAI } from "@/lib/photos.
 import { enhanceImage, type EnhanceStyle } from "@/lib/enhance";
 import { Button } from "@/components/ui/button";
 import { CreditNudge } from "@/components/credit-nudge";
+import { saveImage } from "@/lib/save-image";
 import { toast } from "sonner";
 import { Sparkles, X, Download } from "lucide-react";
 
@@ -94,16 +95,11 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
   }
 
   async function downloadResult() {
-    const url = savedUrl ?? preview;
-    if (!url) return;
     try {
-      const res = await fetch(url);
-      const b = await res.blob();
-      const u = URL.createObjectURL(b);
-      const a = document.createElement("a");
-      a.href = u; a.download = `snappy-${photoId}-ai.jpg`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(u);
-    } catch { toast.error("다운로드 실패"); }
+      await saveImage(savedUrl ?? preview, `snappy-${photoId}-ai.jpg`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
+    }
   }
 
   return (
