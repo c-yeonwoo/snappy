@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
       { title: "Snappy — 남이 찍어준 내 인생샷" },
       { name: "description", content: "친구가 찍어준 내 인생샷을 카톡 화질 말고 원본으로 받아와, 친구 투표로 고르고 AI로 완성하세요." },
       { name: "author", content: "Snappy" },
