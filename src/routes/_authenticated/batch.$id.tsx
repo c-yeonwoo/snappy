@@ -7,6 +7,7 @@ import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/com
 import { getBatch, purchasePhotos, removePhoto, reportPhoto, createPollFromBatch } from "@/lib/photos.functions";
 import { ConfirmModal, PromptModal } from "@/components/confirm-modal";
 import { EnhanceFlow } from "@/components/enhance-flow";
+import { CreditNudge } from "@/components/credit-nudge";
 import { formatCredit, relativeTime } from "@/lib/format";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Plus, Download, ShieldCheck, Camera, MessageCircle, Flag, Trash2, Vote } from "lucide-react";
@@ -36,6 +37,7 @@ function BatchPage() {
   const [current, setCurrent] = useState(0);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [lowCredit, setLowCredit] = useState(false);
 
   useEffect(() => {
     if (!api) return;
@@ -74,7 +76,8 @@ function BatchPage() {
       setSelected(new Set());
       await refresh();
     } catch (e: any) {
-      toast.error(e?.message ?? "소장에 실패했어요");
+      if ((e?.message ?? "").includes("크레딧이 부족")) setLowCredit(true);
+      else toast.error(e?.message ?? "소장에 실패했어요");
     } finally {
       setBusy(false);
     }
@@ -305,6 +308,7 @@ function BatchPage() {
         onConfirm={doReport}
         onClose={() => setReportTarget(null)}
       />
+      <CreditNudge open={lowCredit} onClose={() => setLowCredit(false)} />
     </div>
   );
 }

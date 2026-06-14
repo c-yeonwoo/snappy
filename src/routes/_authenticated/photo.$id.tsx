@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Download, ShieldCheck, MessageCircle, Camera, BookmarkCheck, Flag, Trash2 } from "lucide-react";
 import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
 import { EnhanceFlow } from "@/components/enhance-flow";
+import { CreditNudge } from "@/components/credit-nudge";
 import { relativeTime, formatCredit } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/photo/$id")({
@@ -32,6 +33,7 @@ function PhotoDetailPage() {
   const [reporting, setReporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reason, setReason] = useState("");
+  const [lowCredit, setLowCredit] = useState(false);
 
   // Best-effort screenshot deterrent: blur preview while the tab is in the
   // background. Real screenshot blocking lives in the native shell.
@@ -75,7 +77,8 @@ function PhotoDetailPage() {
       qc.invalidateQueries({ queryKey: ["feed"] });
       toast.success("소장 완료! 워터마크가 풀렸어요.");
     } catch (e: any) {
-      toast.error(e?.message ?? "소장에 실패했어요");
+      if ((e?.message ?? "").includes("크레딧이 부족")) setLowCredit(true);
+      else toast.error(e?.message ?? "소장에 실패했어요");
     } finally {
       setBusy(false);
     }
@@ -278,6 +281,7 @@ function PhotoDetailPage() {
         </div>
       )}
 
+      <CreditNudge open={lowCredit} onClose={() => setLowCredit(false)} />
     </div>
   );
 }

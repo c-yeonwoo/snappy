@@ -95,7 +95,11 @@ function FeedPage() {
           <h2 className="font-display mt-4 text-lg font-bold">{tab === "received" ? "받은 컷이 없어요" : "앨범이 비어 있어요"}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{tab === "received" ? "친구를 추가하면 서로 찍어준 컷을 주고받을 수 있어요." : "받은 컷을 소장하면 원본이 여기 모여요."}</p>
           {tab === "received" ? (
-            <Link to="/friends" className="mt-4 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">친구 추가하기</Link>
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <Link to="/upload" className="inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">친구 찍어서 보내기</Link>
+              <p className="text-[11px] text-muted-foreground">먼저 찍어주면 크레딧이 쌓이고, 친구도 답례로 찍어줘요</p>
+              <Link to="/friends" className="text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline">또는 친구 추가하기</Link>
+            </div>
           ) : (
             <button onClick={() => setTab("received")} className="mt-4 inline-flex h-10 items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background">받은 사진 보기</button>
           )}

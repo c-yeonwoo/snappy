@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getEnhanceInfo, commitEnhancement, enhancePhotoAI } from "@/lib/photos.functions";
 import { enhanceImage, type EnhanceStyle } from "@/lib/enhance";
 import { Button } from "@/components/ui/button";
+import { CreditNudge } from "@/components/credit-nudge";
 import { toast } from "sonner";
 import { Sparkles, X, Download } from "lucide-react";
 
@@ -33,6 +34,7 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"mock" | "real">("mock");
   const [holding, setHolding] = useState(false); // 꾹 누르면 원본 비교
+  const [lowCredit, setLowCredit] = useState(false);
 
   async function openModal() {
     setSavedUrl(null);
@@ -84,7 +86,8 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
       qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success(`AI 보정 완료! (${ENHANCE_COST} 크레딧 사용)`);
     } catch (e: any) {
-      toast.error(e?.message ?? "보정 실패");
+      if ((e?.message ?? "").includes("크레딧이 부족")) { setOpen(false); setLowCredit(true); }
+      else toast.error(e?.message ?? "보정 실패");
     } finally {
       setBusy(false);
     }
@@ -166,6 +169,7 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
         </div>,
         document.body,
       )}
+      <CreditNudge open={lowCredit} onClose={() => setLowCredit(false)} />
     </>
   );
 }
