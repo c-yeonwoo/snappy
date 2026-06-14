@@ -144,8 +144,8 @@
   html {
     /* slightly smaller base for a more comfortable reading size on mobile */
     font-size: 15px;
-    /* 가로 스크롤/바운스 차단 (웹뷰 포함) */
-    overflow-x: hidden;
+    /* 가로 넘침만 잘라냄 — clip 은 스크롤 컨테이너를 만들지 않아 fixed/sticky 정상 동작 */
+    overflow-x: clip;
     overscroll-behavior-x: none;
     /* 네이티브 느낌: 탭 시 회색 하이라이트 제거 */
     -webkit-tap-highlight-color: transparent;
@@ -157,9 +157,9 @@
     font-family: var(--font-sans);
     font-size: 0.95rem;
     line-height: 1.55;
-    /* 가로/세로 스크롤 바운스 차단 (당겨서 새로고침·러버밴드 제거) */
-    overflow-x: hidden;
-    overscroll-behavior: none;
+    /* 가로 넘침만 clip (스크롤 컨테이너化 방지) + 세로 바운스 차단 */
+    overflow-x: clip;
+    overscroll-behavior-y: none;
     max-width: 100vw;
     /* 네이티브 느낌: 텍스트 선택·롱프레스 콜아웃 비활성 (입력류는 아래서 복원) */
     -webkit-user-select: none;

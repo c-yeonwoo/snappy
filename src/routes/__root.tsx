@@ -144,7 +144,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* 모바일 전용 프레임: 데스크탑에서도 모바일 폭 컬럼으로만 보이게 가둔다 */}
-      <div className="relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden bg-background sm:border-x sm:border-border/60 sm:shadow-[0_0_80px_rgba(10,10,10,0.08)]">
+      <div className="relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-clip bg-background sm:border-x sm:border-border/60 sm:shadow-[0_0_80px_rgba(10,10,10,0.08)]">
         <Outlet />
       </div>
       <Toaster position="top-center" richColors />
