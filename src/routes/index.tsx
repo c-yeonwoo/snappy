@@ -54,12 +54,12 @@ function Index() {
           </div>
 
           <h1 className="font-display mt-6 text-[2.5rem] font-extrabold leading-[1.05]">
-            남이 찍어준<br />
-            <span className="box-decoration-clone rounded-xl bg-accent/70 px-2 text-foreground">내 인생샷.</span>
+            친구가 찍어준<br />
+            <span className="box-decoration-clone rounded-xl bg-accent/70 px-2 text-foreground">내 사진, 원본으로.</span>
           </h1>
           <p className="mt-5 text-sm text-muted-foreground">
-            친구 폰에 잠든 잘 나온 내 사진, 카톡 화질 말고 <b className="text-foreground">원본</b>으로 받아와요.
-            찍어준 만큼 <b className="text-foreground">크레딧</b>이 쌓이니까, 달라고 하기 민망할 일도 없어요.
+            워터마크로 미리 보고, 마음에 드는 컷만 <b className="text-foreground">크레딧</b>으로 소장해요.
+            카톡 화질 말고 <b className="text-foreground">원본</b>으로.
           </p>
         </section>
 
