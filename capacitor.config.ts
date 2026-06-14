@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // Snappy 네이티브 셸 — TanStack Start는 SSR이라 정적번들이 아님.
 // 네이티브 앱은 "배포된 Snappy 웹"을 server.url 로 로드하는 래퍼 + 네이티브 플러그인.
 // 실제 배포 도메인으로 CAP_SERVER_URL 을 설정하거나 아래 기본값을 바꿔줘.
-const SERVER_URL = process.env.CAP_SERVER_URL ?? "https://snappy.app";
+const SERVER_URL = process.env.CAP_SERVER_URL ?? "https://snap-buddy.vercel.app";
 
 const config: CapacitorConfig = {
   appId: "app.snappy.mobile", // 스토어 등록 전 확정 (변경 어려움)
