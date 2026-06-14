@@ -24,12 +24,23 @@ export function ChargeCreditsModal({ open, onClose }: { open: boolean; onClose: 
     try {
       const res = await chargeFn({ data: { credits } });
       if (res.status === "completed") {
+        // mock 모드 — 즉시 적립
         toast.success(`${credits} 크레딧 충전 완료!`);
         qc.invalidateQueries({ queryKey: ["profile"] });
         onClose();
-      } else {
-        toast.info("결제 연동 준비 중이에요");
+        return;
       }
+      // real 모드 — 토스 결제창으로
+      const { loadTossPayments } = await import("@tosspayments/payment-sdk");
+      const toss = await loadTossPayments(res.client_key);
+      await toss.requestPayment("카드", {
+        amount: res.won,
+        orderId: res.order_id,
+        orderName: res.order_name,
+        successUrl: `${window.location.origin}/payments/success`,
+        failUrl: `${window.location.origin}/payments/fail`,
+      });
+      // requestPayment 는 리다이렉트 → 이후 흐름은 /payments/success 에서
     } catch (e: any) {
       toast.error(e?.message ?? "충전 실패");
     } finally {

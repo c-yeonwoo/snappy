@@ -1194,18 +1194,34 @@ export const getEnhanceInfo = createServerFn({ method: "GET" })
     return { cost: ENHANCE_COST, balance, mode: AI_MODE };
   });
 
-// fal.ai 호출 (real 모드). 이미지 URL을 넣고 보정/업스케일 결과 URL을 받는다.
-async function callFal(imageUrl: string, _style?: string): Promise<string> {
-  const resp = await fetch(`https://fal.run/${FAL_MODEL}`, {
-    method: "POST",
-    headers: { Authorization: `Key ${FAL_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ image_url: imageUrl }),
-  });
-  if (!resp.ok) throw new Error(`fal_error_${resp.status}`);
-  const json: any = await resp.json();
-  const out = json?.image?.url ?? json?.images?.[0]?.url ?? json?.output?.[0] ?? json?.url ?? null;
-  if (!out) throw new Error("fal_no_output");
-  return out;
+// fal.ai 동기 호출 (real 모드). 이미지 URL → 보정/업스케일 결과 URL.
+// fal.run/{model} 은 동기 엔드포인트. 모델별 입력 키가 달라 image_url 기준으로 보냄.
+async function callFal(imageUrl: string): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 55_000); // fal 보정/업스케일은 길 수 있음
+  try {
+    const resp = await fetch(`https://fal.run/${FAL_MODEL}`, {
+      method: "POST",
+      headers: { Authorization: `Key ${FAL_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ image_url: imageUrl }),
+      signal: ctrl.signal,
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      console.error("[fal]", resp.status, text.slice(0, 300));
+      throw new Error(`fal_error_${resp.status}`);
+    }
+    const json: any = await resp.json();
+    // 모델별 응답 형태 흡수: { image:{url} } | { images:[{url}] } | { output:[url] } | { url }
+    const out = json?.image?.url ?? json?.images?.[0]?.url ?? json?.output?.[0]?.url ?? json?.output?.[0] ?? json?.url ?? null;
+    if (!out) {
+      console.error("[fal] no output", JSON.stringify(json).slice(0, 300));
+      throw new Error("fal_no_output");
+    }
+    return out;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // 서버사이드 AI 보정 (real 모드 전용). 원본 → fal.ai → photos-enhanced 저장 → 크레딧 차감.
@@ -1229,7 +1245,7 @@ export const enhancePhotoAI = createServerFn({ method: "POST" })
     if (!src?.signedUrl) throw dbError(null);
 
     // AI 호출 → 결과 다운로드 → 저장
-    const outUrl = await callFal(src.signedUrl, data.style);
+    const outUrl = await callFal(src.signedUrl);
     const out = await fetch(outUrl);
     if (!out.ok) throw new Error("보정 결과를 가져오지 못했어요");
     const blob = await out.blob();
@@ -1314,7 +1330,7 @@ export const chargeCredits = createServerFn({ method: "POST" })
       return { status: "completed", credits: data.credits, won, balance };
     }
 
-    // real(토스): 세션 생성 후 결제창으로 — 승인 콜백에서 confirm 처리(추후)
+    // real(토스): 세션 생성 후 결제창으로 → /payments/success 에서 confirm
     await supabaseAdmin.from("point_charge_sessions").insert({
       id: crypto.randomUUID(),
       user_id: context.userId,
@@ -1325,7 +1341,54 @@ export const chargeCredits = createServerFn({ method: "POST" })
       provider: "toss",
       metadata: { credits: data.credits },
     });
-    return { status: "pending", order_id, won, credits: data.credits, payment: getTossConfig() };
+    return {
+      status: "pending",
+      order_id,
+      won,
+      credits: data.credits,
+      order_name: `Snappy 크레딧 ${data.credits}개`,
+      client_key: TOSS_CLIENT_KEY,
+    };
+  });
+
+// 토스 결제 승인 — /payments/success 에서 호출. 서버가 토스 API로 검증 후 크레딧 적립.
+export const confirmTossPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ payment_key: z.string(), order_id: z.string(), amount: z.number().int() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: session } = await supabaseAdmin
+      .from("point_charge_sessions")
+      .select("id, user_id, amount_won, status, metadata")
+      .eq("order_id", data.order_id)
+      .maybeSingle();
+    if (!session || session.user_id !== context.userId) throw new Error("결제 세션을 찾을 수 없어요");
+    if (session.status === "completed") return { status: "completed" }; // 멱등
+    if (session.amount_won !== data.amount) throw new Error("결제 금액이 일치하지 않아요");
+
+    // 토스 승인 API (Basic auth = base64(secretKey + ":"))
+    const auth = Buffer.from(`${TOSS_SECRET_KEY}:`).toString("base64");
+    const resp = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentKey: data.payment_key, orderId: data.order_id, amount: data.amount }),
+    });
+    const result: any = await resp.json();
+    if (!resp.ok || result?.status !== "DONE") {
+      console.error("[toss confirm]", resp.status, JSON.stringify(result).slice(0, 300));
+      throw new Error(result?.message ?? "결제 승인에 실패했어요");
+    }
+
+    const credits = Number(session.metadata?.credits ?? Math.round(session.amount_won / CREDIT_PRICE_WON));
+    await supabaseAdmin.from("point_charge_sessions").update({ status: "completed", payment_key: data.payment_key, completed_at: new Date().toISOString() }).eq("order_id", data.order_id);
+    await applyWalletCredit(supabaseAdmin, {
+      user_id: context.userId,
+      amount_won: credits,
+      kind: "charge",
+      session_id: data.order_id,
+      note: `credit charge toss: ${credits}c`,
+    });
+    return { status: "completed", credits };
   });
 
 // ----------------- 초대-수령(invite-to-claim) -----------------

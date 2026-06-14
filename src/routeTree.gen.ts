@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PaymentsSuccessRouteImport } from './routes/payments.success'
+import { Route as PaymentsFailRouteImport } from './routes/payments.fail'
 import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as AuthenticatedUploadRouteImport } from './routes/_authenticated/upload'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -40,6 +42,16 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsSuccessRoute = PaymentsSuccessRouteImport.update({
+  id: '/payments/success',
+  path: '/payments/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsFailRoute = PaymentsFailRouteImport.update({
+  id: '/payments/fail',
+  path: '/payments/fail',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClaimTokenRoute = ClaimTokenRouteImport.update({
@@ -130,6 +142,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
   '/claim/$token': typeof ClaimTokenRoute
+  '/payments/fail': typeof PaymentsFailRoute
+  '/payments/success': typeof PaymentsSuccessRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/polls/$id': typeof AuthenticatedPollsIdRoute
@@ -148,6 +162,8 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/upload': typeof AuthenticatedUploadRoute
   '/claim/$token': typeof ClaimTokenRoute
+  '/payments/fail': typeof PaymentsFailRoute
+  '/payments/success': typeof PaymentsSuccessRoute
   '/batch/$id': typeof AuthenticatedBatchIdRoute
   '/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/polls/$id': typeof AuthenticatedPollsIdRoute
@@ -169,6 +185,8 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/upload': typeof AuthenticatedUploadRoute
   '/claim/$token': typeof ClaimTokenRoute
+  '/payments/fail': typeof PaymentsFailRoute
+  '/payments/success': typeof PaymentsSuccessRoute
   '/_authenticated/batch/$id': typeof AuthenticatedBatchIdRoute
   '/_authenticated/photo/$id': typeof AuthenticatedPhotoIdRoute
   '/_authenticated/polls/$id': typeof AuthenticatedPollsIdRoute
@@ -190,6 +208,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upload'
     | '/claim/$token'
+    | '/payments/fail'
+    | '/payments/success'
     | '/batch/$id'
     | '/photo/$id'
     | '/polls/$id'
@@ -208,6 +228,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upload'
     | '/claim/$token'
+    | '/payments/fail'
+    | '/payments/success'
     | '/batch/$id'
     | '/photo/$id'
     | '/polls/$id'
@@ -228,6 +250,8 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/upload'
     | '/claim/$token'
+    | '/payments/fail'
+    | '/payments/success'
     | '/_authenticated/batch/$id'
     | '/_authenticated/photo/$id'
     | '/_authenticated/polls/$id'
@@ -242,6 +266,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
+  PaymentsFailRoute: typeof PaymentsFailRoute
+  PaymentsSuccessRoute: typeof PaymentsSuccessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -265,6 +291,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments/success': {
+      id: '/payments/success'
+      path: '/payments/success'
+      fullPath: '/payments/success'
+      preLoaderRoute: typeof PaymentsSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments/fail': {
+      id: '/payments/fail'
+      path: '/payments/fail'
+      fullPath: '/payments/fail'
+      preLoaderRoute: typeof PaymentsFailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/claim/$token': {
@@ -426,6 +466,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ClaimTokenRoute: ClaimTokenRoute,
+  PaymentsFailRoute: PaymentsFailRoute,
+  PaymentsSuccessRoute: PaymentsSuccessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
