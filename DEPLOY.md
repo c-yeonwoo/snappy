@@ -174,3 +174,30 @@ npm run build            # .vercel/output 생성 (vercel preset)
 npx vite preview         # 로컬 미리보기
 ```
 다른 타겟 테스트: `NITRO_PRESET=cloudflare-module npm run build`
+
+---
+
+## 7. 베타 오픈 capacity 체크리스트
+
+### 인프라 (대부분 자동 스케일 — 베타 규모 안전)
+- Vercel 서버리스 / Supabase Postgres·Storage 오토스케일. 수백~수천 유저 베타엔 충분
+- ⚠️ **무료 티어 한도** 모니터링: Supabase(DB 용량·동시연결·스토리지·월 대역폭), Vercel(함수 실행·대역폭)
+
+### 쿼리·쓰기 (적용됨)
+- 피드/보낸함 LIMIT (100/200), 프로필·서명URL 배치 호출(N+1 없음)
+- **접근로그 최적화**: 피드 preview 로깅 제거, 묶음/구매는 배치 1회·논블로킹 (로그 폭증·지연 방지)
+- 핵심 인덱스 존재(subject/uploader/batch/wallet/session)
+
+### 비용·어뷰징 가드
+- **AI 보정 = mock(0원)** — fal 키 mock 유지 (베타)
+- **추천 보너스**: 클레이머 1회 한정 ✅ / ⚠️ 초대자 farming(버려지는 계정으로 +5 반복)은 미방지 — 베타 관찰, 심하면 일일 한도
+- **토스 결제**: test 키로 검증 후 live. 승인은 서버에서 토스 API 재검증(위변조 방지) ✅
+- 업로드 스토리지 증가 관찰 (악성 대량 업로드 시 일일 한도 검토)
+
+### 출시 전 필수 점검
+- [ ] **미적용 마이그레이션 전부 `supabase db push`** (안 하면 초대/구매/보정 500)
+- [ ] Supabase Auth → Redirect URLs 에 실도메인 `/**`
+- [ ] 노출됐던 anon 키 로테이션
+- [ ] 토스 test 결제 1회 (충전→결제창→/payments/success→적립)
+- [ ] `FAL_KEY` mock 확인 (과금 차단)
+- [ ] 에러 모니터링 (Vercel 로그 / lovable-error-reporting) 확인

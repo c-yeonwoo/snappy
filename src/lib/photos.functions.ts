@@ -134,6 +134,24 @@ async function logPhotoAccess(contextUserId: string, photoId: string, eventType:
   });
 }
 
+// 여러 사진 접근로그 일괄 기록 (배치 1회 INSERT, 응답 블로킹 안 함)
+function logPhotoAccessBatch(contextUserId: string, photoIds: string[], eventType: string) {
+  if (photoIds.length === 0) return;
+  void (async () => {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const req = getRequest();
+      const ip = getClientIp();
+      const ua = req?.headers.get("user-agent");
+      await supabaseAdmin.from("photo_access_logs").insert(
+        photoIds.map((id) => ({ photo_id: id, actor_id: contextUserId, event_type: eventType, ip, user_agent: ua })),
+      );
+    } catch (e) {
+      console.error("[access log batch]", (e as any)?.message);
+    }
+  })();
+}
+
 // 포인트로 사진 구매 — 원자적 RPC(purchase_photos_with_points) 호출.
 // 잔액 검증·차감·sold 처리·업로더 적립·구매/세션 기록이 단일 트랜잭션에서 처리된다.
 async function buyPhotosWithPoints(supabaseAdmin: any, buyerId: string, photoIds: string[]) {
@@ -143,7 +161,7 @@ async function buyPhotosWithPoints(supabaseAdmin: any, buyerId: string, photoIds
   });
   if (error) throw purchaseRpcError(error);
   const rows = (data ?? []) as Array<{ id: string; original_path: string }>;
-  for (const r of rows) await logPhotoAccess(buyerId, r.id, "purchase");
+  logPhotoAccessBatch(buyerId, rows.map((r) => r.id), "purchase"); // 배치·논블로킹
   return rows;
 }
 
@@ -263,7 +281,7 @@ export const getMyFeed = createServerFn({ method: "GET" })
         uploader: profilesMap[p.uploader_id] ?? null,
       };
     });
-    for (const item of list) await logPhotoAccess(context.userId, item.id, "preview");
+    // 피드 preview 로깅 제거 — 매 렌더마다 N건 쓰기는 로그 폭증·지연. 의미있는 이벤트(소장·다운로드·신고)만 기록.
     return { photos: enriched };
   });
 
@@ -557,7 +575,7 @@ export const getBatch = createServerFn({ method: "POST" })
       preview_url: wm[i]?.signedUrl ?? null,
       original_url: ogByIdx[i] ?? null,
     }));
-    for (const item of list) await logPhotoAccess(context.userId, item.id, "preview");
+    logPhotoAccessBatch(context.userId, list.map((p) => p.id), "preview"); // 배치·논블로킹
     return { uploader, photos: items };
   });
 
