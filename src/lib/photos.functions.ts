@@ -18,6 +18,7 @@ function isMockPayment(key: string) {
 const PAYMENT_MODE = isMockPayment(TOSS_CLIENT_KEY) ? "mock" : "real";
 const MAX_BATCH_SIZE = 20;
 const MAX_CHARGE_AMOUNT = 200000;
+const CREDIT_PRICE_WON = 200; // 1 크레딧 = 200원
 
 // AI 보정 — fal.ai. 키가 없거나 mock 이면 mock 모드(클라 캔버스 보정, 비용 0).
 const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? "mock_fal_key";
@@ -1289,6 +1290,42 @@ export const commitEnhancement = createServerFn({ method: "POST" })
       .from("photos-enhanced")
       .createSignedUrl(data.enhanced_path, 60 * 10);
     return { ok: true, enhanced_url: signed?.signedUrl ?? null };
+  });
+
+// ----------------- 크레딧 충전 (1크레딧 = 200원) -----------------
+
+export const chargeCredits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ credits: z.number().int().min(1).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const won = data.credits * CREDIT_PRICE_WON;
+    const order_id = generateOrderId("chg");
+
+    if (PAYMENT_MODE === "mock") {
+      await applyWalletCredit(supabaseAdmin, {
+        user_id: context.userId,
+        amount_won: data.credits, // 지갑 단위 = 크레딧 수
+        kind: "charge",
+        session_id: order_id,
+        note: `credit charge mock: ${data.credits}c (${won}원)`,
+      });
+      const balance = await getWalletBalance(supabaseAdmin, context.userId);
+      return { status: "completed", credits: data.credits, won, balance };
+    }
+
+    // real(토스): 세션 생성 후 결제창으로 — 승인 콜백에서 confirm 처리(추후)
+    await supabaseAdmin.from("point_charge_sessions").insert({
+      id: crypto.randomUUID(),
+      user_id: context.userId,
+      kind: "charge",
+      order_id,
+      amount_won: won,
+      status: "pending",
+      provider: "toss",
+      metadata: { credits: data.credits },
+    });
+    return { status: "pending", order_id, won, credits: data.credits, payment: getTossConfig() };
   });
 
 // ----------------- 초대-수령(invite-to-claim) -----------------

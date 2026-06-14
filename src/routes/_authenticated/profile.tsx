@@ -2,6 +2,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   getMyProfile,
   getMyFeed,
@@ -11,7 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatRemaining, isWindowOpen, formatCredit } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
-import { Settings, Users, ChevronRight, LogOut, BookmarkCheck, Copy, Coins } from "lucide-react";
+import { Settings, Users, ChevronRight, LogOut, BookmarkCheck, Copy, Coins, Plus } from "lucide-react";
+import { ChargeCreditsModal } from "@/components/charge-credits-modal";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "나 — Snappy" }] }),
@@ -34,6 +36,7 @@ function ProfilePage() {
   const windowActive = isWindowOpen(allowUntil);
   const handle = data?.profile?.handle ?? "me";
   const displayName = data?.profile?.display_name ?? "내 이름";
+  const [chargeOpen, setChargeOpen] = useState(false);
 
   useNow(windowActive);
 
@@ -84,10 +87,13 @@ function ProfilePage() {
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">내 크레딧</p>
             <p className="font-display text-2xl font-extrabold leading-tight">{formatCredit(creditBalance)}</p>
           </div>
+          <button onClick={() => setChargeOpen(true)} className="inline-flex items-center gap-1 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background transition active:scale-95">
+            <Plus className="h-3.5 w-3.5" /> 충전
+          </button>
         </div>
         <p className="px-5 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
           친구를 찍어주고 그 사진이 소장되면 <b className="text-foreground">+1 크레딧</b>이 쌓여요.
-          모은 크레딧으로 친구가 찍어준 내 사진의 원본을 풀 수 있어요. (사진 1장 = 1 크레딧)
+          급할 땐 충전(1크레딧 = 200원)도 가능해요.
         </p>
       </section>
 
@@ -101,6 +107,8 @@ function ProfilePage() {
       <button onClick={signOut} className="flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card/70 px-4 py-3 text-sm font-semibold text-muted-foreground">
         <LogOut className="h-4 w-4" /> 로그아웃
       </button>
+
+      <ChargeCreditsModal open={chargeOpen} onClose={() => setChargeOpen(false)} />
     </div>
   );
 }

@@ -1,11 +1,15 @@
-// 크레딧 부족 시 호혜 루프로 유도하는 넛지 — "친구 찍어주러 가기".
+// 크레딧 부족 시 호혜 루프로 유도하는 넛지 — "친구 찍어주러 가기" + 빠른 충전.
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { Coins, Camera } from "lucide-react";
+import { ChargeCreditsModal } from "@/components/charge-credits-modal";
 
 export function CreditNudge({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
-  if (!open || typeof document === "undefined") return null;
+  const [chargeOpen, setChargeOpen] = useState(false);
+  if ((!open && !chargeOpen) || typeof document === "undefined") return null;
+  if (chargeOpen) return <ChargeCreditsModal open={chargeOpen} onClose={() => { setChargeOpen(false); onClose(); }} />;
   return createPortal(
     <div
       className="fixed inset-0 z-[100] mx-auto flex max-w-[480px] items-center justify-center bg-foreground/40 px-6 backdrop-blur-md"
@@ -19,12 +23,17 @@ export function CreditNudge({ open, onClose }: { open: boolean; onClose: () => v
           모은 크레딧으로 소장·AI 보정을 쓸 수 있어요.
         </p>
         <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 rounded-full border border-border py-3 text-sm font-semibold">나중에</button>
           <button
             onClick={() => { onClose(); navigate({ to: "/upload" }); }}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-foreground py-3 text-sm font-semibold text-background"
           >
-            <Camera className="h-4 w-4" /> 친구 찍어주러 가기
+            <Camera className="h-4 w-4" /> 찍어주러 가기
+          </button>
+          <button
+            onClick={() => setChargeOpen(true)}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border py-3 text-sm font-semibold"
+          >
+            <Coins className="h-4 w-4" /> 충전하기
           </button>
         </div>
       </div>
