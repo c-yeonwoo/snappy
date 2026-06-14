@@ -2,7 +2,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
 import { getInvite, claimInvite } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/logo";
@@ -13,16 +12,38 @@ import { Gift, Lock, ImageDown } from "lucide-react";
 const PENDING_KEY = "snappy_pending_claim";
 
 export const Route = createFileRoute("/claim/$token")({
-  head: () => ({ meta: [{ title: "사진 초대 — Snappy" }] }),
+  // SSR loader → 카톡/SNS 링크 미리보기(OG)에 '그 사람 사진'이 뜨게 한다.
+  loader: ({ params }) => getInvite({ data: { token: params.token } }),
+  head: ({ loaderData }) => {
+    const inv: any = loaderData;
+    const ok = inv?.found && inv?.status !== "claimed";
+    const who = inv?.inviter?.handle ? `@${inv.inviter.handle}` : "친구";
+    const title = ok ? `${who} 님이 사진 ${inv.count}장을 보냈어요 — Snappy` : "사진 초대 — Snappy";
+    const desc = ok ? "가입하면 원본을 받고 둘 다 +5 크레딧이 쌓여요." : "친구가 찍어준 내 인생샷을 원본으로.";
+    const img = (inv?.previews ?? []).find((u: string | null) => !!u) ?? undefined;
+    const meta: any[] = [
+      { title },
+      { name: "description", content: desc },
+      { property: "og:title", content: title },
+      { property: "og:description", content: desc },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ];
+    if (img) {
+      meta.push({ property: "og:image", content: img });
+      meta.push({ name: "twitter:image", content: img });
+    }
+    return { meta };
+  },
   component: ClaimPage,
 });
 
 function ClaimPage() {
   const { token } = Route.useParams();
   const navigate = useNavigate();
-  const inviteFn = useServerFn(getInvite);
   const claimFn = useServerFn(claimInvite);
-  const { data, isLoading } = useQuery({ queryKey: ["invite", token], queryFn: () => inviteFn({ data: { token } }) });
+  const data = Route.useLoaderData() as any;
+  const isLoading = false;
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
