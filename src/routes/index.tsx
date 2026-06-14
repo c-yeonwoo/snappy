@@ -29,7 +29,7 @@ function Index() {
       <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-accent/60 blur-3xl opacity-70" />
       <div aria-hidden className="pointer-events-none absolute top-40 -left-24 h-80 w-80 rounded-full bg-brand blur-3xl opacity-80" />
 
-      <header className="relative mx-auto flex max-w-md items-center justify-between px-[18px] py-4">
+      <header className="pt-safe relative mx-auto flex max-w-md items-center justify-between px-[18px] py-4">
         <Link to="/">
           <Logo className="text-2xl" />
         </Link>

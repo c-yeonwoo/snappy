@@ -66,8 +66,8 @@ function AuthedLayout() {
   ] as const;
   const active = (to: string) => loc.pathname === to || loc.pathname.startsWith(to + "/");
   return (
-    <div className="min-h-screen pb-24">
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
+    <div className="min-h-screen pb-32">
+      <header className="pt-safe sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center justify-between px-[18px] py-3">
           <Link to="/feed">
             <Logo />
@@ -83,8 +83,8 @@ function AuthedLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-md px-[18px] py-6"><Outlet /></main>
-      {/* bottom tab bar (mobile-only nav) */}
-      <nav className="fixed inset-x-0 bottom-3 z-30 mx-auto flex max-w-xs items-center justify-around gap-1 rounded-full border border-white/70 bg-card/90 px-2 py-1.5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.18)] backdrop-blur-xl">
+      {/* bottom tab bar (mobile-only nav) — 홈바 안전영역만큼 띄움 */}
+      <nav className="fixed inset-x-0 z-30 mx-auto flex max-w-xs items-center justify-around gap-1 rounded-full border border-white/70 bg-card/90 px-2 py-1.5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.18)] backdrop-blur-xl" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {tabs.map((t) => (
           <Link key={t.to} to={t.to} className={`flex flex-1 flex-col items-center rounded-full px-2 py-1.5 text-[10px] font-semibold ${active(t.to) ? "bg-foreground text-background" : "text-muted-foreground"}`}>
             <t.icon className="h-4 w-4" />{t.label}

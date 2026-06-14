@@ -72,7 +72,7 @@ function ClaimPage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-brand blur-3xl opacity-60" />
-      <header className="relative mx-auto w-full max-w-md px-[18px] py-5">
+      <header className="pt-safe relative mx-auto w-full max-w-md px-[18px] py-5">
         <Link to="/"><Logo /></Link>
       </header>
 
