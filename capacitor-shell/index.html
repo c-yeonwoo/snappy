@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Snappy</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #a3e635; }
+      .wrap { display: grid; place-items: center; height: 100%; font-family: -apple-system, system-ui, sans-serif; }
+      .s { font-size: 72px; font-weight: 900; color: #0a0a0a; }
+      .m { margin-top: 12px; color: #0a0a0a; opacity: .7; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <!-- server.url 로 원격 로드되므로 이 화면은 로딩/오프라인 폴백용 -->
+    <div class="wrap">
+      <div>
+        <div class="s">S</div>
+        <div class="m">연결 중…</div>
+      </div>
+    </div>
+  </body>
+</html>
