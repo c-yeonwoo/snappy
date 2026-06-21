@@ -14,7 +14,10 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
-    contentInset: "always",
+    // 안전영역은 CSS env()로만 처리 (contentInset과 이중 적용 방지)
+    contentInset: "never",
+    // WKWebView 자체 스크롤/바운스 끔 → 내부 CSS 컨테이너만 스크롤 (네이티브 느낌)
+    scrollEnabled: false,
   },
 };
 

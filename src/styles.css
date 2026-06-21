@@ -144,24 +144,23 @@
   html {
     /* slightly smaller base for a more comfortable reading size on mobile */
     font-size: 15px;
-    /* 가로 넘침만 잘라냄 — clip 은 스크롤 컨테이너를 만들지 않아 fixed 정상 동작 */
-    overflow-x: clip;
-    /* 문서 바운스(러버밴드) 차단 — 짧은 화면도 안 튕김 */
+    /* 문서 자체는 스크롤하지 않음 — 스크롤은 앱 프레임(내부 컨테이너)에서만 */
+    height: 100%;
+    overflow: hidden;
     overscroll-behavior: none;
     /* 네이티브 느낌: 탭 시 회색 하이라이트 제거 */
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
+    height: 100%;
+    overflow: hidden;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-size: 0.95rem;
     line-height: 1.55;
-    /* 가로 넘침 clip + 문서 바운스 차단(양축) */
-    overflow-x: clip;
     overscroll-behavior: none;
-    max-width: 100vw;
     /* 네이티브 느낌: 텍스트 선택·롱프레스 콜아웃 비활성 (입력류는 아래서 복원) */
     -webkit-user-select: none;
     user-select: none;
