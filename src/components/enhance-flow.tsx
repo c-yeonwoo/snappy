@@ -65,23 +65,34 @@ export function EnhanceFlow({ photoId, originalUrl }: { photoId: string; origina
     }
   }
 
+  // mock 경로: 클라 캔버스 결과 업로드 + 크레딧 차감
+  async function saveMock(): Promise<string> {
+    if (!blob) throw new Error("미리보기를 먼저 불러와주세요");
+    const { data: u } = await supabase.auth.getUser();
+    const path = `${u.user!.id}/${crypto.randomUUID()}.jpg`;
+    const up = await supabase.storage.from("photos-enhanced").upload(path, blob, { contentType: "image/jpeg" });
+    if (up.error) throw up.error;
+    const res = await commitFn({ data: { source_photo_id: photoId, enhanced_path: path, style } });
+    return res.enhanced_url;
+  }
+
   async function save() {
     setBusy(true);
     try {
       let resultUrl: string | null = null;
       if (mode === "real") {
-        // 서버 AI 보정 (fal.ai)
-        const res = await aiFn({ data: { source_photo_id: photoId, style } });
-        resultUrl = res.enhanced_url;
+        try {
+          // 서버 AI 보정 (fal.ai)
+          const res = await aiFn({ data: { source_photo_id: photoId, style } });
+          resultUrl = res.enhanced_url;
+        } catch (e: any) {
+          // 크레딧 부족은 그대로 전파, 그 외(키 오류·타임아웃 등)는 mock 보정으로 폴백
+          if ((e?.message ?? "").includes("크레딧이 부족")) throw e;
+          console.warn("[enhance] real 보정 실패 → mock 폴백:", e?.message);
+          resultUrl = await saveMock();
+        }
       } else {
-        // mock: 클라 캔버스 결과 업로드 + 크레딧 차감
-        if (!blob) return;
-        const { data: u } = await supabase.auth.getUser();
-        const path = `${u.user!.id}/${crypto.randomUUID()}.jpg`;
-        const up = await supabase.storage.from("photos-enhanced").upload(path, blob, { contentType: "image/jpeg" });
-        if (up.error) throw up.error;
-        const res = await commitFn({ data: { source_photo_id: photoId, enhanced_path: path, style } });
-        resultUrl = res.enhanced_url;
+        resultUrl = await saveMock();
       }
       setSavedUrl(resultUrl);
       qc.invalidateQueries({ queryKey: ["profile"] });
