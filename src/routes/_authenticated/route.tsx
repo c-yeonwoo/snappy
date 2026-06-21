@@ -67,7 +67,7 @@ function AuthedLayout() {
   const active = (to: string) => loc.pathname === to || loc.pathname.startsWith(to + "/");
   return (
     <div className="min-h-screen pb-32">
-      <header className="pt-safe sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
+      <header className="pt-safe fixed left-1/2 top-0 z-40 w-full max-w-[480px] -translate-x-1/2 border-b border-border/70 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center justify-between px-[18px] py-3">
           <Link to="/feed">
             <Logo />
@@ -82,7 +82,7 @@ function AuthedLayout() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-md px-[18px] py-6"><Outlet /></main>
+      <main className="mx-auto max-w-md px-[18px] pb-6 pt-[calc(env(safe-area-inset-top)+3.75rem)]"><Outlet /></main>
       {/* bottom tab bar (mobile-only nav) — 홈바 안전영역만큼 띄움 */}
       <nav className="fixed inset-x-0 z-30 mx-auto flex max-w-xs items-center justify-around gap-1 rounded-full border border-white/70 bg-card/90 px-2 py-1.5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.18)] backdrop-blur-xl" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {tabs.map((t) => (
