@@ -14,7 +14,7 @@ function PaymentFail() {
   const { message } = useSearch({ from: "/payments/fail" });
   const navigate = useNavigate();
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-[100dvh] flex-col">
       <header className="mx-auto w-full max-w-md px-[18px] py-5"><Logo /></header>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-[18px] pb-24 text-center">
         <h1 className="font-display text-xl font-bold">결제가 취소됐어요</h1>

@@ -33,7 +33,7 @@ function PaymentSuccess() {
   }, [paymentKey, orderId, amount]);
 
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-[100dvh] flex-col">
       <header className="mx-auto w-full max-w-md px-[18px] py-5"><Logo /></header>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-[18px] pb-24 text-center">
         {state === "loading" && (

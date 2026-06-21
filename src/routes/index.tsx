@@ -25,7 +25,7 @@ const preview = [
 
 function Index() {
   return (
-    <div className="relative min-h-screen overflow-hidden text-foreground">
+    <div className="relative min-h-[100dvh] overflow-hidden text-foreground">
       <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 h-72 w-72 rounded-full bg-accent/60 blur-3xl opacity-70" />
       <div aria-hidden className="pointer-events-none absolute top-40 -left-24 h-80 w-80 rounded-full bg-brand blur-3xl opacity-80" />
 
