@@ -239,11 +239,20 @@ export const createPhoto = createServerFn({ method: "POST" })
 export const getMyFeed = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: photos, error } = await context.supabase
+    // 차단한 사용자가 보낸 사진은 제외 (App Store 1.2 UGC)
+    const { data: blocks } = await context.supabase
+      .from("blocked_users")
+      .select("blocked_id")
+      .eq("blocker_id", context.userId);
+    const blockedIds = (blocks ?? []).map((b) => b.blocked_id);
+
+    let query = context.supabase
       .from("photos")
       .select("id, uploader_id, watermarked_path, original_path, price_won, status, note, created_at, batch_id")
       .eq("subject_id", context.userId)
-      .neq("status", "removed")
+      .neq("status", "removed");
+    if (blockedIds.length) query = query.not("uploader_id", "in", `(${blockedIds.join(",")})`);
+    const { data: photos, error } = await query
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw dbError(error);
@@ -679,6 +688,68 @@ export const removePhoto = createServerFn({ method: "POST" })
       .from("photos")
       .update({ status: "removed" })
       .eq("id", data.id);
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+// ── App Store 1.2 (UGC): 유저 차단 ──────────────────────────────
+// 차단하면 그 사람이 보낸 사진이 받은함/피드에서 사라진다.
+export const blockUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (data.user_id === context.userId) throw new Error("자기 자신은 차단할 수 없어요");
+    const { error } = await context.supabase
+      .from("blocked_users")
+      .upsert({ blocker_id: context.userId, blocked_id: data.user_id }, { onConflict: "blocker_id,blocked_id" });
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+export const unblockUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("blocked_users")
+      .delete()
+      .eq("blocker_id", context.userId)
+      .eq("blocked_id", data.user_id);
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+export const getBlockedUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("blocked_users")
+      .select("blocked_id, created_at")
+      .eq("blocker_id", context.userId)
+      .order("created_at", { ascending: false });
+    if (error) throw dbError(error);
+    const ids = (rows ?? []).map((r) => r.blocked_id);
+    const profilesMap: Record<string, { handle: string; display_name: string; avatar_url: string | null }> = {};
+    if (ids.length) {
+      const { data: profs } = await context.supabase
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url")
+        .in("id", ids);
+      for (const p of profs ?? []) profilesMap[p.id] = { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url };
+    }
+    return { users: (rows ?? []).map((r) => ({ id: r.blocked_id, ...(profilesMap[r.blocked_id] ?? { handle: "", display_name: "탈퇴/알수없음", avatar_url: null }) })) };
+  });
+
+// ── App Store 5.1.1 (Privacy): 앱 내 계정 삭제(탈퇴) ──────────────
+// auth.users 삭제 → FK ON DELETE CASCADE 로 프로필/사진/지갑 등 연쇄 삭제.
+export const deleteMyAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // 안전망: 핵심 콘텐츠 우선 정리 (FK 미설정 대비 best-effort)
+    await supabaseAdmin.from("photos").delete().or(`uploader_id.eq.${context.userId},subject_id.eq.${context.userId}`);
+    await supabaseAdmin.from("profiles").delete().eq("id", context.userId);
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(context.userId);
     if (error) throw dbError(error);
     return { ok: true };
   });

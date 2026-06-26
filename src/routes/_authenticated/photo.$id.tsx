@@ -5,8 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Download, ShieldCheck, MessageCircle, Camera, BookmarkCheck, Flag, Trash2 } from "lucide-react";
-import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto } from "@/lib/photos.functions";
+import { ArrowLeft, Download, ShieldCheck, MessageCircle, Camera, BookmarkCheck, Flag, Trash2, UserX } from "lucide-react";
+import { getPhotoDetail, purchasePhoto, reportPhoto, removePhoto, blockUser } from "@/lib/photos.functions";
 import { EnhanceFlow } from "@/components/enhance-flow";
 import { CreditNudge } from "@/components/credit-nudge";
 import { saveImage } from "@/lib/save-image";
@@ -25,6 +25,7 @@ function PhotoDetailPage() {
   const buyFn = useServerFn(purchasePhoto);
   const reportFn = useServerFn(reportPhoto);
   const removeFn = useServerFn(removePhoto);
+  const blockFn = useServerFn(blockUser);
 
   const { data, isLoading } = useQuery({ queryKey: ["photo", id], queryFn: () => detailFn({ data: { id } }) });
   const p = data?.photo;
@@ -33,6 +34,7 @@ function PhotoDetailPage() {
   const [boughtUrl, setBoughtUrl] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
   const [reason, setReason] = useState("");
   const [lowCredit, setLowCredit] = useState(false);
 
@@ -103,6 +105,22 @@ function PhotoDetailPage() {
       navigate({ to: "/feed" });
     } catch (e: any) {
       toast.error(e?.message ?? "신고 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleBlock() {
+    if (!p?.uploader_id) return;
+    setBusy(true);
+    try {
+      await blockFn({ data: { user_id: p.uploader_id } });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["blocked-users"] });
+      toast.success("차단했어요. 이 사용자의 사진은 더 이상 보이지 않아요.");
+      navigate({ to: "/feed" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "차단 실패");
     } finally {
       setBusy(false);
     }
@@ -236,8 +254,19 @@ function PhotoDetailPage() {
                 <Button variant="destructive" className="flex-1 rounded-full" onClick={handleRemove} disabled={busy}>삭제</Button>
               </div>
             </div>
+          ) : confirmBlock ? (
+            <div className="rounded-[1.5rem] border border-destructive/30 bg-destructive/5 p-4 text-left">
+              <p className="text-sm font-bold">이 사용자 차단</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                <span className="font-semibold">{p.uploader?.display_name ?? "이 사용자"}</span>님을 차단하면 보낸 사진이 더 이상 보이지 않아요. 설정에서 해제할 수 있어요.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button variant="ghost" className="flex-1 rounded-full" onClick={() => setConfirmBlock(false)}>취소</Button>
+                <Button variant="destructive" className="flex-1 rounded-full" onClick={handleBlock} disabled={busy}>차단하기</Button>
+              </div>
+            </div>
           ) : (
-            <div className="flex items-center justify-center gap-5 text-xs font-semibold text-muted-foreground">
+            <div className="flex items-center justify-center gap-4 text-xs font-semibold text-muted-foreground">
               <button onClick={() => setConfirmDelete(true)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
                 <Trash2 className="h-3 w-3" /> 삭제
               </button>
@@ -245,6 +274,14 @@ function PhotoDetailPage() {
               <button onClick={() => setReporting(true)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
                 <Flag className="h-3 w-3" /> 신고
               </button>
+              {!p.is_uploader && (
+                <>
+                  <span className="text-border">|</span>
+                  <button onClick={() => setConfirmBlock(true)} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
+                    <UserX className="h-3 w-3" /> 차단
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -56,6 +56,13 @@ function AuthPage() {
     });
   }
 
+  async function signInWithApple() {
+    await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: { redirectTo: `${window.location.origin}/feed` },
+    });
+  }
+
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -120,6 +127,11 @@ function AuthPage() {
                   <Input id="password2" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
                 <Button type="submit" className="w-full rounded-full" disabled={loading}>가입하기</Button>
+                <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+                  가입 시 <Link to="/terms" className="underline">이용약관</Link> 및{" "}
+                  <Link to="/privacy" className="underline">개인정보처리방침</Link>에 동의하게 돼요.
+                  부적절한 콘텐츠·악용 행위는 무관용 원칙으로 처리됩니다.
+                </p>
               </form>
             </TabsContent>
           </Tabs>
@@ -131,6 +143,13 @@ function AuthPage() {
             <div className="h-px flex-1 bg-border" />
           </div>
           <div className="space-y-2.5">
+            {/* Apple — 애플 4.8 필수 (소셜 로그인 제공 시 동등 옵션) */}
+            <button onClick={signInWithApple} className="flex w-full items-center gap-3 rounded-2xl bg-black px-4 py-[9px] text-sm font-bold text-white transition active:scale-[0.99]">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="white">
+                <path d="M16.37 1.43c.06.9-.28 1.78-.85 2.42-.6.67-1.58 1.19-2.5 1.12-.08-.86.32-1.77.86-2.36.6-.67 1.66-1.16 2.49-1.18zM19.6 17.3c-.45 1.04-.67 1.5-1.25 2.42-.81 1.29-1.95 2.9-3.37 2.91-1.26.01-1.58-.82-3.3-.81-1.71.01-2.07.83-3.33.8-1.42-.02-2.5-1.46-3.31-2.75-2.27-3.6-2.51-7.83-1.11-10.08.99-1.6 2.56-2.53 4.03-2.53 1.5 0 2.44.82 3.68.82 1.2 0 1.93-.82 3.67-.82 1.31 0 2.7.71 3.69 1.95-3.24 1.78-2.72 6.4.91 7.87z"/>
+              </svg>
+              <span className="flex-1 text-center">Apple로 로그인</span>
+            </button>
             {/* 카카오 */}
             <button onClick={signInWithKakao} className="flex w-full items-center gap-3 rounded-2xl bg-[#FEE500] px-4 py-[9px] text-sm font-bold text-[#191919] transition active:scale-[0.99]">
               <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="#191919">

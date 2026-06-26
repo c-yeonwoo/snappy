@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -32,6 +33,11 @@ import { Route as AuthenticatedPollsIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPhotoIdRouteImport } from './routes/_authenticated/photo.$id'
 import { Route as AuthenticatedBatchIdRouteImport } from './routes/_authenticated/batch.$id'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/privacy': typeof PrivacyRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/friends': typeof AuthenticatedFriendsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/privacy': typeof PrivacyRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/friends': typeof AuthenticatedFriendsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/privacy': typeof PrivacyRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
   '/_authenticated/friends': typeof AuthenticatedFriendsRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/privacy'
     | '/support'
+    | '/terms'
     | '/feed'
     | '/friends'
     | '/notifications'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/privacy'
     | '/support'
+    | '/terms'
     | '/feed'
     | '/friends'
     | '/notifications'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/privacy'
     | '/support'
+    | '/terms'
     | '/_authenticated/feed'
     | '/_authenticated/friends'
     | '/_authenticated/notifications'
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PrivacyRoute: typeof PrivacyRoute
   SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
   PaymentsFailRoute: typeof PaymentsFailRoute
   PaymentsSuccessRoute: typeof PaymentsSuccessRoute
@@ -298,6 +311,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/support': {
       id: '/support'
       path: '/support'
@@ -507,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PrivacyRoute: PrivacyRoute,
   SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
   ClaimTokenRoute: ClaimTokenRoute,
   PaymentsFailRoute: PaymentsFailRoute,
   PaymentsSuccessRoute: PaymentsSuccessRoute,

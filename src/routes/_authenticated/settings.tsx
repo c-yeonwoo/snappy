@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { getMyProfile, updateMyProfile, setAllowWindow } from "@/lib/photos.functions";
+import { getMyProfile, updateMyProfile, setAllowWindow, getBlockedUsers, unblockUser, deleteMyAccount } from "@/lib/photos.functions";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatRemaining, isWindowOpen } from "@/lib/format";
 import { useNow } from "@/hooks/use-now";
-import { ArrowLeft, Radio, ShieldCheck } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Radio, ShieldCheck, UserX, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "설정 — Snappy" }] }),
@@ -22,10 +25,41 @@ function SettingsPage() {
   const fetchProfile = useServerFn(getMyProfile);
   const update = useServerFn(updateMyProfile);
   const setWindow = useServerFn(setAllowWindow);
+  const fetchBlocked = useServerFn(getBlockedUsers);
+  const unblock = useServerFn(unblockUser);
+  const deleteAccount = useServerFn(deleteMyAccount);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const { data: blocked } = useQuery({ queryKey: ["blocked-users"], queryFn: () => fetchBlocked() });
   const [handle, setHandle] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleUnblock(userId: string) {
+    try {
+      await unblock({ data: { user_id: userId } });
+      qc.invalidateQueries({ queryKey: ["blocked-users"] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      toast.success("차단을 해제했어요");
+    } catch (e: any) {
+      toast.error(e?.message ?? "해제 실패");
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      await supabase.auth.signOut();
+      toast.success("계정이 삭제됐어요");
+      navigate({ to: "/" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "삭제 실패");
+      setDeleting(false);
+    }
+  }
 
   const allowUntil = data?.profile?.allow_until ?? null;
   const windowActive = isWindowOpen(allowUntil);
@@ -94,6 +128,47 @@ function SettingsPage() {
           </div>
         )}
       </section>
+
+      <section className="rounded-[1.5rem] border border-white/70 bg-card/90 p-5 backdrop-blur">
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><UserX className="h-3.5 w-3.5" /> 차단한 사용자</p>
+        {(blocked?.users?.length ?? 0) === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">차단한 사용자가 없어요. 받은 사진 상세에서 부적절한 사용자를 차단할 수 있어요.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {blocked!.users.map((u) => (
+              <li key={u.id} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{u.display_name}</p>
+                  {u.handle && <p className="truncate text-xs text-muted-foreground">@{u.handle}</p>}
+                </div>
+                <button onClick={() => handleUnblock(u.id)} className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold">
+                  차단 해제
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-[1.5rem] border border-destructive/30 bg-card/90 p-5 backdrop-blur">
+        <p className="text-xs font-bold uppercase tracking-wide text-destructive flex items-center gap-1.5"><Trash2 className="h-3.5 w-3.5" /> 계정 삭제</p>
+        <p className="mt-1 text-xs text-muted-foreground">계정과 업로드한 모든 사진·데이터가 영구 삭제돼요. 되돌릴 수 없어요.</p>
+        <button onClick={() => setConfirmDelete(true)} className="mt-3 w-full rounded-full border border-destructive py-2.5 text-sm font-semibold text-destructive">
+          계정 삭제(탈퇴)
+        </button>
+      </section>
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="정말 계정을 삭제할까요?"
+        description="계정과 업로드한 모든 사진·크레딧·기록이 영구적으로 삭제되고 복구할 수 없어요."
+        confirmLabel="삭제하기"
+        cancelLabel="취소"
+        destructive
+        busy={deleting}
+        onConfirm={handleDeleteAccount}
+        onClose={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
